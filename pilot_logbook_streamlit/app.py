@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import html
 import json
+from copy import deepcopy
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlencode
@@ -25,10 +27,7 @@ from rules import (
     route_rows,
 )
 from storage import (
-    authenticate_account,
-    create_account,
     delete_aircraft_image,
-    find_account,
     get_user_data,
     load_data,
     save_aircraft_image,
@@ -50,6 +49,103 @@ from ui_components import (
 
 
 DEFAULT_USER_ID = "arthur@local"
+DEFAULT_ACCOUNT_DEADLINES = [
+    {
+        "name": "Class 2 medical",
+        "category": "Medical",
+        "expires": "2026-09-30",
+        "remind_days": 60,
+        "notes": "Book AME appointment early.",
+    },
+    {
+        "name": "SEP rating",
+        "category": "Licence / rating",
+        "expires": "2027-03-31",
+        "remind_days": 90,
+        "notes": "Check refresher requirements.",
+    },
+]
+DEFAULT_ACCOUNT_CURRENCY_RULES = [
+    {
+        "name": "Default pax currency",
+        "airport": "",
+        "lookback_days": 90,
+        "required_landings": 3,
+        "notes": "Standard passenger-carrying check.",
+    },
+    {
+        "name": "LFLI pax currency",
+        "airport": "LFLI",
+        "lookback_days": 45,
+        "required_landings": 3,
+        "notes": "Local stricter check.",
+    },
+]
+
+
+def password_hash(password: str) -> str:
+    return hashlib.sha256(str(password or "").encode("utf-8")).hexdigest()
+
+
+def normalize_account_id(value: str) -> str:
+    cleaned = str(value or "").strip().lower()
+    return cleaned or "anonymous@local"
+
+
+def account_record(user_id: str, username: str | None = None, email: str | None = None, password: str = "") -> dict:
+    normalized_user_id = normalize_account_id(user_id)
+    return {
+        "user_id": normalized_user_id,
+        "username": normalize_account_id(username or normalized_user_id.split("@")[0]),
+        "email": normalize_account_id(email or normalized_user_id),
+        "password_hash": password_hash(password),
+    }
+
+
+def empty_account_data() -> dict:
+    return {
+        "flights": [],
+        "aircraft_profiles": {},
+        "deadlines": deepcopy(DEFAULT_ACCOUNT_DEADLINES),
+        "currency_rules": deepcopy(DEFAULT_ACCOUNT_CURRENCY_RULES),
+    }
+
+
+def find_account(data: dict, login: str) -> dict | None:
+    cleaned = normalize_account_id(login)
+    for account in data.get("accounts", {}).values():
+        aliases = {
+            normalize_account_id(account.get("user_id", "")),
+            normalize_account_id(account.get("username", "")),
+            normalize_account_id(account.get("email", "")),
+        }
+        if cleaned in aliases:
+            return account
+    return None
+
+
+def authenticate_account(data: dict, login: str, password: str) -> dict | None:
+    account = find_account(data, login)
+    if not account:
+        return None
+    stored_hash = account.get("password_hash", "")
+    if stored_hash and stored_hash == password_hash(password):
+        return account
+    return None
+
+
+def create_account(data: dict, email: str, username: str, password: str) -> tuple[bool, str, str | None]:
+    if not str(email or "").strip() or not str(username or "").strip() or not str(password or ""):
+        return False, "Add an email, username, and password.", None
+    email = normalize_account_id(email)
+    username = normalize_account_id(username)
+    if find_account(data, email) or find_account(data, username):
+        return False, "That email or username already exists.", None
+
+    user_id = email
+    data.setdefault("users", {})[user_id] = empty_account_data()
+    data.setdefault("accounts", {})[user_id] = account_record(user_id, username=username, email=email, password=password)
+    return True, f"Created account {username}.", user_id
 
 
 def get_current_user_id() -> str:
@@ -73,6 +169,55 @@ def current_account_label(all_data: dict, user_id: str) -> str:
 def set_active_account(user_id: str) -> None:
     st.session_state.current_user_id = user_id
     st.query_params["account"] = user_id
+
+
+def demo_account_data() -> dict:
+    return {
+        "flights": [
+            {"date": "2026-05-28", "aircraft_registration": "HB-DEMO", "departure": "LSGG", "arrival": "LFLI", "pic_minutes": 42, "dual_minutes": 0, "night_minutes": 0, "landings": 2, "route_events": [{"airport": "LFLP", "type": "touch_and_go", "landing_count": 1, "count_as_landing": True}], "remarks": "Geneva local currency warm-up."},
+            {"date": "2026-05-22", "aircraft_registration": "HB-DEMO", "departure": "LFLI", "arrival": "LSGS", "pic_minutes": 74, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Alpine valley navigation to Sion."},
+            {"date": "2026-05-14", "aircraft_registration": "HB-DEMO", "departure": "LSGS", "arrival": "LSZA", "pic_minutes": 88, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Mountain route via Ticino."},
+            {"date": "2026-05-05", "aircraft_registration": "HB-DEMO", "departure": "LSZA", "arrival": "LSZH", "pic_minutes": 66, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Lugano to Zurich."},
+            {"date": "2026-04-27", "aircraft_registration": "HB-DEMO", "departure": "LSZH", "arrival": "LFSB", "pic_minutes": 58, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Zurich to Basel."},
+            {"date": "2026-04-16", "aircraft_registration": "F-HDEM", "departure": "LFSB", "arrival": "LFST", "pic_minutes": 52, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Alsace hop."},
+            {"date": "2026-04-07", "aircraft_registration": "F-HDEM", "departure": "LFST", "arrival": "LFGJ", "pic_minutes": 70, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Strasbourg to Jura."},
+            {"date": "2026-03-29", "aircraft_registration": "F-HDEM", "departure": "LFGJ", "arrival": "LFLL", "pic_minutes": 76, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Dole to Lyon."},
+            {"date": "2026-03-18", "aircraft_registration": "F-HDEM", "departure": "LFLL", "arrival": "LFLB", "pic_minutes": 44, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Lyon to Chambery."},
+            {"date": "2026-03-08", "aircraft_registration": "F-HDEM", "departure": "LFLB", "arrival": "LFLS", "pic_minutes": 46, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Chambery to Grenoble."},
+            {"date": "2026-02-25", "aircraft_registration": "F-HDEM", "departure": "LFLS", "arrival": "LFMN", "pic_minutes": 82, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Alps to the Riviera."},
+            {"date": "2026-02-14", "aircraft_registration": "F-HDEM", "departure": "LFMN", "arrival": "LFMD", "pic_minutes": 36, "dual_minutes": 0, "night_minutes": 0, "landings": 2, "route_events": [], "remarks": "Cote d'Azur landing practice."},
+        ],
+        "aircraft_profiles": {
+            "HB-DEMO": {"registration": "HB-DEMO", "type": "DA40", "manufacturer": "Diamond", "category": "SEP", "notes": "Demo Swiss touring aircraft.", "image_path": ""},
+            "F-HDEM": {"registration": "F-HDEM", "type": "DR400", "manufacturer": "Robin", "category": "SEP", "notes": "Demo French touring aircraft.", "image_path": ""},
+        },
+        "deadlines": deepcopy(DEFAULT_ACCOUNT_DEADLINES),
+        "currency_rules": deepcopy(DEFAULT_ACCOUNT_CURRENCY_RULES),
+    }
+
+
+def ensure_app_accounts(all_data: dict) -> bool:
+    changed = False
+    all_data.setdefault("users", {})
+    accounts = all_data.setdefault("accounts", {})
+    for user_id in list(all_data["users"]):
+        normalized_user_id = normalize_account_id(user_id)
+        if normalized_user_id not in accounts:
+            accounts[normalized_user_id] = account_record(normalized_user_id)
+            accounts[normalized_user_id]["password_hash"] = ""
+            changed = True
+    if "demo" not in accounts or accounts["demo"].get("password_hash") != password_hash("demo"):
+        accounts["demo"] = {
+            "user_id": "demo",
+            "username": "demo",
+            "email": "demo",
+            "password_hash": password_hash("demo"),
+        }
+        changed = True
+    if "demo" not in all_data["users"]:
+        all_data["users"]["demo"] = demo_account_data()
+        changed = True
+    return changed
 
 
 def page_setup() -> None:
@@ -1459,6 +1604,8 @@ def render_account(data: dict, all_data: dict) -> None:
 
 page_setup()
 all_data = load_data()
+if ensure_app_accounts(all_data):
+    save_data(all_data)
 current_user_id = get_current_user_id()
 data = get_user_data(all_data, current_user_id)
 current_page = render_navigation()

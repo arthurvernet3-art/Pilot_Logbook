@@ -1,0 +1,170 @@
+{
+  "flights": [
+    {
+      "date": "2026-06-01",
+      "aircraft_registration": "F-HMSA",
+      "departure": "LFLI",
+      "arrival": "LFLP",
+      "pic_minutes": 30,
+      "dual_minutes": 0,
+      "night_minutes": 0,
+      "landings": 1,
+      "route_events": [],
+      "remarks": "",
+      "sector_group": "dd5a6af7-5bec-4e47-83b2-18b9279e0d66",
+      "sector_index": 1,
+      "sector_count": 2,
+      "sector_event": {
+        "type": "touch_and_go",
+        "airport": "LFLP",
+        "planned_utc": "0730",
+        "logged_utc": "",
+        "count_as_landing": true
+      }
+    },
+    {
+      "date": "2026-06-01",
+      "aircraft_registration": "F-HMSA",
+      "departure": "LFLP",
+      "arrival": "LFLI",
+      "pic_minutes": 30,
+      "dual_minutes": 0,
+      "night_minutes": 0,
+      "landings": 1,
+      "route_events": [],
+      "remarks": "",
+      "sector_group": "dd5a6af7-5bec-4e47-83b2-18b9279e0d66",
+      "sector_index": 2,
+      "sector_count": 2
+    },
+    {
+      "date": "2026-05-14",
+      "aircraft_registration": "F-HMSA",
+      "departure": "LFLI",
+      "arrival": "LFLP",
+      "pic_minutes": 30,
+      "dual_minutes": 0,
+      "night_minutes": 0,
+      "landings": 1,
+      "route_events": [],
+      "remarks": "",
+      "sector_group": "192c0b7d-725d-4783-be1a-37cb2bdb8979",
+      "sector_index": 1,
+      "sector_count": 2,
+      "sector_event": {
+        "type": "full_stop",
+        "airport": "LFLP",
+        "planned_utc": "0800",
+        "logged_utc": "",
+        "count_as_landing": true
+      }
+    },
+    {
+      "date": "2026-05-14",
+      "aircraft_registration": "F-HMSA",
+      "departure": "LFLP",
+      "arrival": "LFLI",
+      "pic_minutes": 30,
+      "dual_minutes": 0,
+      "night_minutes": 0,
+      "landings": 1,
+      "route_events": [],
+      "remarks": "",
+      "sector_group": "192c0b7d-725d-4783-be1a-37cb2bdb8979",
+      "sector_index": 2,
+      "sector_count": 2
+    },
+    {
+      "date": "2026-06-01",
+      "aircraft_registration": "F-HFLL",
+      "departure": "LFLI",
+      "arrival": "LFLP",
+      "pic_minutes": 25,
+      "dual_minutes": 0,
+      "night_minutes": 0,
+      "landings": 1,
+      "route_events": [],
+      "remarks": "",
+      "departure_utc": "2026-06-01 07:05 UTC",
+      "arrival_utc": "2026-06-01 07:30 UTC",
+      "sector_group": "4081b246-e43f-49e4-8e87-9b11adf6e932",
+      "sector_index": 1,
+      "sector_count": 2,
+      "sector_event": {
+        "type": "touch_and_go",
+        "airport": "LFLP",
+        "planned_utc": "07:30",
+        "logged_utc": "",
+        "landing_count": 1,
+        "count_as_landing": true
+      }
+    },
+    {
+      "date": "2026-06-01",
+      "aircraft_registration": "F-HFLL",
+      "departure": "LFLP",
+      "arrival": "LFLI",
+      "pic_minutes": 25,
+      "dual_minutes": 0,
+      "night_minutes": 0,
+      "landings": 2,
+      "route_events": [],
+      "remarks": "",
+      "departure_utc": "2026-06-01 07:30 UTC",
+      "arrival_utc": "2026-06-01 07:55 UTC",
+      "sector_group": "4081b246-e43f-49e4-8e87-9b11adf6e932",
+      "sector_index": 2,
+      "sector_count": 2
+    }
+  ],
+  "deadlines": [
+    {
+      "name": "Class 2 medical",
+      "category": "Medical",
+      "expires": "2026-09-30",
+      "remind_days": 60,
+      "notes": "Book AME appointment early."
+    },
+    {
+      "name": "SEP rating",
+      "category": "Licence / rating",
+      "expires": "2027-03-31",
+      "remind_days": 90,
+      "notes": "Check refresher requirements."
+    }
+  ],
+  "aircraft_profiles": {
+    "F-HMSA": {
+      "registration": "F-HMSA",
+      "type": "DR400-120",
+      "manufacturer": "Robin",
+      "category": "",
+      "notes": "",
+      "image_path": ""
+    },
+    "F-HFLL": {
+      "registration": "F-HFLL",
+      "type": "DR400-120",
+      "manufacturer": "Robin",
+      "category": "",
+      "notes": "",
+      "image_path": "/Users/arthurvernet/Documents/Codex/2026-06-01/applications-mentioned-by-the-user-appshot/outputs/pilot_logbook_streamlit/aircraft_images/F-HFLL.jpg"
+    }
+  },
+  "currency_rules": [
+    {
+      "name": "Default pax currency",
+      "airport": "",
+      "lookback_days": 90,
+      "required_landings": 3,
+      "notes": "Standard passenger-carrying check."
+    },
+    {
+      "name": "LFLI pax currency",
+      "airport": "LFLI",
+      "lookback_days": 45,
+      "required_landings": 3,
+      "notes": "Local stricter check."
+    }
+  ]
+}

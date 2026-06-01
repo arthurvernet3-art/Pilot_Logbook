@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import streamlit as st
@@ -8,6 +9,26 @@ from airports import airport_options_with_recent, option_code, option_label
 
 
 NEW_AIRCRAFT = "__new_aircraft__"
+
+
+def normalize_utc_time(value: str) -> str:
+    cleaned = str(value or "").strip().upper().replace(" ", "")
+    if not cleaned:
+        return ""
+    if ":" in cleaned:
+        parts = cleaned.split(":", 1)
+        if len(parts[0]) in {1, 2} and len(parts[1]) == 2 and parts[0].isdigit() and parts[1].isdigit():
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            if 0 <= hours <= 23 and 0 <= minutes <= 59:
+                return f"{hours:02d}:{minutes:02d}"
+        return cleaned
+    if len(cleaned) in {3, 4} and cleaned.isdigit():
+        hours = int(cleaned[:-2])
+        minutes = int(cleaned[-2:])
+        if 0 <= hours <= 23 and 0 <= minutes <= 59:
+            return f"{hours:02d}:{minutes:02d}"
+    return cleaned
 
 
 def aircraft_label(registration: str, profiles: dict) -> str:
@@ -98,7 +119,7 @@ def route_chain_inputs(flights: list[dict], prefix: str, labels: dict) -> tuple[
             with col1:
                 airports.append(airport_selectbox(airport_label_text, flights, "arrival", f"{prefix}_airport_{index}"))
             airport_times.append(
-                col2.text_input(labels["utc_time"], placeholder="HH:MM", key=f"{prefix}_airport_time_{index}").strip().upper()
+                normalize_utc_time(col2.text_input(labels["utc_time"], placeholder="HHMM", key=f"{prefix}_airport_time_{index}"))
             )
             continue
 
@@ -115,7 +136,7 @@ def route_chain_inputs(flights: list[dict], prefix: str, labels: dict) -> tuple[
             list(range(1, 10)),
             key=f"{prefix}_event_count_{index}",
         )
-        planned_utc = col4.text_input(labels["utc_time"], placeholder="HH:MM", key=f"{prefix}_event_time_{index}").strip().upper()
+        planned_utc = normalize_utc_time(col4.text_input(labels["utc_time"], placeholder="HHMM", key=f"{prefix}_event_time_{index}"))
         airports.append(airport)
         airport_times.append(planned_utc)
         events.append(
@@ -144,7 +165,7 @@ def route_event_inputs(flights: list[dict], prefix: str, max_events: int = 2) ->
         )
         with col2:
             airport = airport_selectbox("Airport", flights, "arrival", f"{prefix}_event_airport_{index}")
-        time_utc = col3.text_input("UTC time", placeholder="HH:MM", key=f"{prefix}_event_time_{index}").strip()
+        time_utc = normalize_utc_time(col3.text_input("UTC time", placeholder="HHMM", key=f"{prefix}_event_time_{index}"))
         if event_type != "None":
             events.append(
                 {
@@ -158,12 +179,21 @@ def route_event_inputs(flights: list[dict], prefix: str, max_events: int = 2) ->
     return events
 
 
-def duration_input(label: str, key: str, show_label: bool = False) -> int:
+def duration_input(label: str, key: str, show_label: bool = False, default_minutes: int | None = None, default_signature: str | None = None) -> int:
     if show_label:
         st.caption(label)
+    default_hours = int(default_minutes or 0) // 60
+    default_remainder = int(default_minutes or 0) % 60
+    if default_minutes is not None and default_signature:
+        key_suffix = hashlib.sha1(default_signature.encode("utf-8")).hexdigest()[:12]
+        hours_key = f"{key}_{key_suffix}_hours"
+        minutes_key = f"{key}_{key_suffix}_minutes"
+    else:
+        hours_key = f"{key}_hours"
+        minutes_key = f"{key}_minutes"
     hours_col, minutes_col = st.columns(2)
-    hours = hours_col.number_input("Hours", min_value=0, step=1, value=0, key=f"{key}_hours")
-    minutes = minutes_col.number_input("Minutes", min_value=0, max_value=59, step=1, value=0, key=f"{key}_minutes")
+    hours = hours_col.number_input("Hours", min_value=0, step=1, value=default_hours, key=hours_key)
+    minutes = minutes_col.number_input("Minutes", min_value=0, max_value=59, step=1, value=default_remainder, key=minutes_key)
     return int(hours) * 60 + int(minutes)
 
 

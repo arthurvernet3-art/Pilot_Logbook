@@ -3,8 +3,9 @@ from __future__ import annotations
 import base64
 import html
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from urllib.parse import urlencode
 
 import pandas as pd
 import pydeck as pdk
@@ -23,21 +24,60 @@ from rules import (
     route_event_landing_count,
     route_rows,
 )
-from storage import delete_aircraft_image, save_aircraft_image, load_data, save_data
+from storage import (
+    authenticate_account,
+    create_account,
+    delete_aircraft_image,
+    find_account,
+    get_user_data,
+    load_data,
+    save_aircraft_image,
+    save_data,
+)
+
 from ui_components import (
     NEW_AIRCRAFT,
     aircraft_form,
     aircraft_label,
     aircraft_selectbox,
     duration_input,
+    normalize_utc_time,
     route_chain_inputs,
     show_aircraft_image,
     uppercase_text_input,
 )
 
 
+
+DEFAULT_USER_ID = "arthur@local"
+
+
+def get_current_user_id() -> str:
+    """Return the active local account id for this session."""
+    requested_account = st.query_params.get("account")
+    if isinstance(requested_account, list):
+        requested_account = requested_account[0] if requested_account else None
+    if requested_account:
+        st.session_state.current_user_id = str(requested_account).strip().lower()
+    st.session_state.setdefault("current_user_id", DEFAULT_USER_ID)
+    return str(st.session_state.current_user_id).strip().lower() or DEFAULT_USER_ID
+
+
+def current_account_label(all_data: dict, user_id: str) -> str:
+    account = all_data.get("accounts", {}).get(user_id, {})
+    username = account.get("username") or user_id
+    email = account.get("email") or user_id
+    return f"{username} · {email}" if username != email else username
+
+
+def set_active_account(user_id: str) -> None:
+    st.session_state.current_user_id = user_id
+    st.query_params["account"] = user_id
+
+
 def page_setup() -> None:
-    st.set_page_config(page_title="Pilot Logbook", page_icon="✈️", layout="wide", initial_sidebar_state="collapsed")
+    language = st.session_state.get("language", "en")
+    st.set_page_config(page_title=tr(language, "app_title"), page_icon="✈️", layout="wide", initial_sidebar_state="collapsed")
     st.markdown(
         """
         <style>
@@ -50,6 +90,69 @@ def page_setup() -> None:
             color: #536171;
             font-size: .95rem;
             margin: -.5rem 0 1.25rem 0;
+        }
+        div[data-testid="stPopover"] {
+            margin-top: 1.8rem;
+        }
+        div[data-testid="stPopover"] > button {
+            border-radius: 999px;
+            border: 1px solid #d5dce5;
+            background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+            box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+            font-weight: 800;
+            min-height: 2.7rem;
+        }
+        div[data-testid="stPopover"] > button:hover {
+            border-color: #1f6feb;
+            box-shadow: 0 10px 22px rgba(31, 111, 235, .14);
+        }
+        .menu-tab-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: .35rem;
+            margin-top: .4rem;
+        }
+        .menu-tab-link {
+            display: block;
+            text-decoration: none !important;
+            color: #1f2937 !important;
+            border-radius: 13px;
+            min-height: 2.65rem;
+            line-height: 2.65rem;
+            padding: 0 .85rem;
+            border: 1px solid #d9e0ea;
+            background: #ffffff;
+            font-weight: 780;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, .04);
+            margin-bottom: .35rem;
+        }
+        .menu-tab-link:hover {
+            border-color: #1f6feb;
+            background: #f4f8ff;
+            color: #1d4ed8 !important;
+        }
+        .menu-tab-link-active {
+            background: #eef5ff;
+            border-color: #1f6feb;
+            color: #1d4ed8 !important;
+            box-shadow: inset 0 0 0 1px #1f6feb;
+        }
+        div[data-testid="stPopover"] div[data-testid="stHorizontalBlock"] {
+            gap: .45rem;
+        }
+        div[data-testid="stPopover"] div[data-testid="stButton"] > button {
+            justify-content: flex-start;
+            border-radius: 13px;
+            min-height: 2.65rem;
+            border: 1px solid #d9e0ea;
+            background: #ffffff;
+            font-weight: 780;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, .04);
+        }
+        div[data-testid="stPopover"] div[data-testid="stButton"] > button:hover {
+            border-color: #1f6feb;
+            background: #f4f8ff;
+            color: #1d4ed8;
         }
         input[placeholder="HB-KDA"],
         input[placeholder="DA40"],
@@ -139,19 +242,50 @@ def page_setup() -> None:
         .home-stat-icon {font-size: 1.35rem; line-height: 1;}
         .home-stat-value {font-size: 2rem; font-weight: 850; margin-top: .35rem; color: #111827;}
         .home-stat-label {color: #5f6b7a; font-weight: 700;}
-        .home-status {
-            border-radius: 18px;
+        .home-status-panel {
+            border-radius: 8px;
             padding: 1rem;
             background: #ffffff;
             border: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             margin: 1rem 0 1.2rem;
             box-shadow: 0 10px 24px rgba(15, 23, 42, .055);
         }
+        .home-status-panel-passenger {margin-top: -.45rem;}
+        .home-status-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: .8rem;
+        }
         .home-status-title {font-size: 1.25rem; font-weight: 800;}
-        .home-status-current {color: #22c55e; font-size: 1.35rem; font-weight: 850;}
+        .home-status-subtitle {color: #64748b; font-weight: 650; margin-top: .1rem;}
+        .home-status-current {font-size: 1.15rem; font-weight: 850;}
+        .home-status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: .65rem;
+        }
+        .home-status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: .75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: .8rem;
+            background: #f8fafc;
+            min-height: 5rem;
+        }
+        .home-status-label {font-weight: 820; color: #111827;}
+        .home-status-detail {color: #64748b; font-weight: 650; margin-top: .12rem;}
+        .home-status-badge {
+            border-radius: 999px;
+            padding: .22rem .55rem;
+            font-weight: 850;
+            font-size: .78rem;
+            white-space: nowrap;
+        }
         .card-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -223,10 +357,15 @@ def page_setup() -> None:
 def render_navigation() -> str:
     st.session_state.setdefault("language", "en")
     st.session_state.setdefault("current_page", "logbook")
+    requested_page = st.query_params.get("page")
+    if isinstance(requested_page, list):
+        requested_page = requested_page[0] if requested_page else None
+    if requested_page in PAGE_KEYS:
+        st.session_state.current_page = requested_page
     old_page_names = {
         "Home": "home",
         "Logbook": "logbook",
-        "In flight": "in_flight",
+        "In flight": "logbook",
         "Statistics": "statistics",
         "Currency": "currency",
         "Map": "map",
@@ -237,31 +376,40 @@ def render_navigation() -> str:
         st.session_state.current_page = old_page_names[st.session_state.current_page]
     if st.session_state.current_page in {"statistics", "map"}:
         st.session_state.current_page = "home"
+    if st.session_state.current_page == "deadlines":
+        st.session_state.current_page = "currency"
+    if st.session_state.current_page == "in_flight":
+        st.session_state.current_page = "logbook"
     if st.session_state.current_page not in PAGE_KEYS:
         st.session_state.current_page = "home"
     language = st.session_state.language
 
-    button_col, title_col = st.columns([2, 4])
-    with button_col.expander(tr(language, "menu")):
-        st.selectbox(
-            tr(language, "language"),
-            list(LANGUAGES),
-            index=list(LANGUAGES).index(language),
-            format_func=lambda code: LANGUAGES[code],
-            key="language",
-        )
-        language = st.session_state.language
-        page = st.radio(
-            tr(language, "select_page"),
-            PAGE_KEYS,
-            index=PAGE_KEYS.index(st.session_state.current_page),
-            key="menu_page_select_v2",
-            format_func=lambda key: tr(language, key),
-            horizontal=False,
-        )
-        if page != st.session_state.current_page:
-            st.session_state.current_page = page
+    spacer_col, button_col, title_col = st.columns([0.15, 1.55, 4])
+    with button_col.popover(tr(language, "menu")):
+        st.caption(tr(language, "language"))
+        lang_col_1, lang_col_2 = st.columns(2)
+        if lang_col_1.button("🇬🇧", key="lang_en", width="stretch", type="primary" if language == "en" else "secondary"):
+            st.session_state.language = "en"
             st.rerun()
+        if lang_col_2.button("🇫🇷", key="lang_fr", width="stretch", type="primary" if language == "fr" else "secondary"):
+            st.session_state.language = "fr"
+            st.rerun()
+        language = st.session_state.language
+        st.caption(tr(language, "select_page"))
+
+        menu_links = []
+        current_account = get_current_user_id()
+        for page_key in PAGE_KEYS:
+            page_label = tr(language, page_key)
+            is_current_page = page_key == st.session_state.current_page
+            css_class = "menu-tab-link menu-tab-link-active" if is_current_page else "menu-tab-link"
+            label_prefix = "✓ " if is_current_page else ""
+            href = "?" + urlencode({"page": page_key, "account": current_account})
+            menu_links.append(
+                f'<a class="{css_class}" href="{html.escape(href)}" target="_self">'
+                f'{html.escape(label_prefix + page_label)}</a>'
+            )
+        st.markdown("".join(menu_links), unsafe_allow_html=True)
     title_col.title(tr(language, "app_title"))
 
     return st.session_state.current_page
@@ -274,15 +422,73 @@ def save_new_aircraft_if_needed(data: dict, registration: str, profile: dict, im
     data["aircraft_profiles"][registration] = profile
 
 
-def route_times_to_boundaries(flight_date: date, route_times: list[str]) -> list[str] | None:
+def parsed_route_datetimes(flight_date: date, route_times: list[str]) -> list[datetime] | None:
     if not route_times or any(not time for time in route_times):
         return None
-    return [f"{flight_date.isoformat()} {time} UTC" for time in route_times]
+    values = []
+    current_date = flight_date
+    previous = None
+    for route_time in route_times:
+        normalized = normalize_utc_time(route_time)
+        try:
+            hours, minutes = [int(part) for part in normalized.split(":", 1)]
+            current = datetime.combine(current_date, datetime.min.time()).replace(hour=hours, minute=minutes)
+        except ValueError:
+            return None
+        if previous and current <= previous:
+            current += timedelta(days=1)
+            current_date = current.date()
+        values.append(current)
+        previous = current
+    return values
+
+
+def route_times_to_boundaries(flight_date: date, route_times: list[str]) -> list[str] | None:
+    values = parsed_route_datetimes(flight_date, route_times)
+    if not values:
+        return None
+    return [f"{value:%Y-%m-%d %H:%M} UTC" for value in values]
+
+
+def route_time_minutes(flight_date: date, route_times: list[str]) -> int | None:
+    values = parsed_route_datetimes(flight_date, route_times)
+    if not values or len(values) < 2:
+        return None
+    return max(0, int((values[-1] - values[0]).total_seconds() // 60))
 
 
 def compact_duration(minutes: int) -> str:
     hours, remainder = divmod(int(minutes), 60)
     return f"{hours}:{remainder:02d}"
+
+
+def recent_experience_status(flights: list[dict]) -> dict:
+    today = date.today()
+    start = today - timedelta(days=365)
+    relevant = []
+    for flight in flights:
+        try:
+            flight_date = datetime.strptime(flight.get("date", ""), "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if start <= flight_date <= today:
+            relevant.append(flight)
+
+    total_minutes = sum(int(flight.get("pic_minutes", 0)) + int(flight.get("dual_minutes", 0)) for flight in relevant)
+    takeoffs = len(relevant)
+    landings = sum(int(flight.get("landings", 0)) for flight in relevant)
+    required_minutes = 12 * 60
+    required_takeoffs = 12
+    required_landings = 12
+    return {
+        "total_minutes": total_minutes,
+        "required_minutes": required_minutes,
+        "takeoffs": takeoffs,
+        "required_takeoffs": required_takeoffs,
+        "landings": landings,
+        "required_landings": required_landings,
+        "ok": total_minutes >= required_minutes and takeoffs >= required_takeoffs and landings >= required_landings,
+    }
 
 
 def display_time(value: str | None) -> str:
@@ -312,7 +518,8 @@ def flight_role(flight: dict) -> str:
 
 def render_flight_cards(flights: list[dict]) -> None:
     if not flights:
-        st.info("No flights yet.")
+        language = st.session_state.language
+        st.info(tr(language, "no_flights"))
         return
 
     rows = []
@@ -355,7 +562,8 @@ def render_flight_cards(flights: list[dict]) -> None:
 
 def render_deadline_cards(deadlines: list[dict]) -> None:
     if not deadlines:
-        st.info("No deadlines yet.")
+        language = st.session_state.language
+        st.info(tr(language, "no_deadlines"))
         return
     cards = []
     for deadline in sorted(deadlines, key=lambda item: deadline_status(item)[0]):
@@ -387,7 +595,8 @@ def image_data_url(image_path: str) -> str:
 
 def render_aircraft_cards(profiles: dict) -> None:
     if not profiles:
-        st.info("No aircraft saved yet.")
+        language = st.session_state.language
+        st.info(tr(language, "no_aircraft"))
         return
     cards = []
     for profile in sorted(profiles.values(), key=lambda item: item.get("registration", "")):
@@ -407,8 +616,8 @@ def render_aircraft_cards(profiles: dict) -> None:
                     {image_html}
                     <div>
                         <div class="info-title">{html.escape(profile.get("registration", ""))}</div>
-                        <div class="info-sub">{html.escape(details or "Aircraft profile")}</div>
-                        <span class="info-pill">{html.escape(profile.get("type", "Unknown"))}</span>
+                        <div class="info-sub">{html.escape(details or tr(st.session_state.language, "aircraft_profile"))}</div>
+                        <span class="info-pill">{html.escape(profile.get("type", tr(st.session_state.language, "unknown")))}</span>
                         <div class="info-sub">{html.escape(profile.get("notes", ""))}</div>
                     </div>
                 </div>
@@ -443,12 +652,100 @@ def render_home_stat_cards(language: str, flights: list[dict], total_minutes: in
             <div class="home-stat-label">{html.escape(tr(language, "total_flights"))}</div>
         </div>
     </div>
-    <div class="home-status">
-        <div class="home-status-title">{html.escape(tr(language, "status"))}</div>
-        <div class="home-status-current">{html.escape(tr(language, "current"))} ✓</div>
-    </div>
     """
     st.html(html_block)
+
+
+def status_row(language: str, label_key: str, value: str, ok: bool) -> str:
+    color = "#16a34a" if ok else "#dc2626"
+    symbol = "OK" if ok else "!"
+    return f"""
+        <div class="home-status-row">
+            <div>
+                <div class="home-status-label">{html.escape(tr(language, label_key))}</div>
+                <div class="home-status-detail">{html.escape(value)}</div>
+            </div>
+            <span class="home-status-badge" style="background:{color}1f;color:{color};">{symbol}</span>
+        </div>
+    """
+
+
+def render_home_status(language: str, flights: list[dict], currency_rules: list[dict]) -> None:
+    experience = recent_experience_status(flights)
+    status_label = tr(language, "current") if experience["ok"] else tr(language, "not_current")
+    status_color = "#16a34a" if experience["ok"] else "#dc2626"
+    experience_rows = [
+        status_row(
+            language,
+            "recent_time",
+            f"{format_duration(experience['total_minutes'])} / {format_duration(experience['required_minutes'])}",
+            experience["total_minutes"] >= experience["required_minutes"],
+        ),
+        status_row(
+            language,
+            "takeoffs",
+            f"{experience['takeoffs']} / {experience['required_takeoffs']}",
+            experience["takeoffs"] >= experience["required_takeoffs"],
+        ),
+        status_row(
+            language,
+            "landings",
+            f"{experience['landings']} / {experience['required_landings']}",
+            experience["landings"] >= experience["required_landings"],
+        ),
+    ]
+    st.html(
+        f"""
+        <div class="home-status-panel">
+            <div class="home-status-heading">
+                <div>
+                    <div class="home-status-title">{html.escape(tr(language, "status"))}</div>
+                    <div class="home-status-subtitle">{html.escape(tr(language, "last_12_months"))}</div>
+                </div>
+                <div class="home-status-current" style="color:{status_color};">{html.escape(status_label)}</div>
+            </div>
+            <div class="home-status-grid">{"".join(experience_rows)}</div>
+        </div>
+        """
+    )
+
+    statuses = [pax_currency(flights, rule) for rule in currency_rules]
+    if not statuses:
+        return
+    passenger_cards = []
+    for status in statuses:
+        ok = bool(status["ok"])
+        color = "#16a34a" if ok else "#dc2626"
+        label = tr(language, "can_carry_pax") if ok else tr(language, "not_current")
+        missing = ""
+        if not ok:
+            missing = f'<div class="home-status-detail">{html.escape(tr(language, "missing_landings", count=status["missing"]))}</div>'
+        passenger_cards.append(
+            f"""
+            <div class="home-status-row">
+                <div>
+                    <div class="home-status-label">{html.escape(status["rule"])}</div>
+                    <div class="home-status-detail">{html.escape(str(status["airport"]))} · {html.escape(tr(language, "last_days", days=status["lookback_days"]))}</div>
+                    <div class="home-status-detail">{status["landings"]} / {status["required_landings"]} {html.escape(tr(language, "landings").lower())}</div>
+                    {missing}
+                </div>
+                <span class="home-status-badge" style="background:{color}1f;color:{color};">{html.escape(label)}</span>
+            </div>
+            """
+        )
+    st.html(
+        f"""
+        <div class="home-status-panel home-status-panel-passenger">
+            <div class="home-status-heading">
+                <div>
+                    <div class="home-status-title">{html.escape(tr(language, "passenger_carry_status"))}</div>
+                    <div class="home-status-subtitle">{html.escape(tr(language, "passenger_carry_subtitle"))}</div>
+                </div>
+            </div>
+            <div class="home-status-grid">{"".join(passenger_cards)}</div>
+        </div>
+        """
+    )
 
 
 def render_route_map(data: dict, title: str | None = None) -> None:
@@ -469,7 +766,8 @@ def render_route_map(data: dict, title: str | None = None) -> None:
         )
         st.pydeck_chart(deck, width="stretch")
     else:
-        st.info("Add a flight with known airports to see routes on the map.")
+        language = st.session_state.language
+        st.info(tr(language, "add_known_airports_map"))
 
 
 def render_home(data: dict) -> None:
@@ -483,6 +781,7 @@ def render_home(data: dict) -> None:
     landings = int(flight_df["landings"].sum()) if not flight_df.empty else 0
 
     render_home_stat_cards(language, flights, total_minutes, landings)
+    render_home_status(language, flights, data["currency_rules"])
     detail_a, detail_b, detail_c = st.columns(3)
     detail_a.metric(tr(language, "pic_time_stat"), format_duration(pic_minutes))
     detail_b.metric(tr(language, "dual_time_stat"), format_duration(dual_minutes))
@@ -494,6 +793,20 @@ def render_home(data: dict) -> None:
 
 def render_logbook(data: dict) -> None:
     language = st.session_state.language
+    mode_options = {
+        "manual": tr(language, "manual_entry"),
+        "in_flight": tr(language, "in_flight"),
+    }
+    selected_mode = st.segmented_control(
+        tr(language, "logbook_mode"),
+        options=list(mode_options),
+        format_func=lambda key: mode_options[key],
+        default="manual",
+        key="logbook_mode",
+    )
+    if selected_mode == "in_flight":
+        render_in_flight(data)
+        return
     flights = data["flights"]
     profiles = data["aircraft_profiles"]
     route_labels = {
@@ -527,6 +840,8 @@ def render_logbook(data: dict) -> None:
 
     departure, arrival, route_events, route_times = route_chain_inputs(flights, "log_route", route_labels)
     minimum_landings = route_event_landing_count(route_events) + 1
+    suggested_minutes = route_time_minutes(flight_date, route_times)
+    route_time_signature = "|".join(route_times)
 
     col_time_1, col_time_2, col_landings = st.columns(3)
     time_role = col_time_1.segmented_control(
@@ -536,13 +851,27 @@ def render_logbook(data: dict) -> None:
         key="log_time_role",
     )
     with col_time_2:
-        flight_minutes = duration_input(tr(language, "flight_time"), "log_flight_time")
+        if suggested_minutes is None:
+            flight_minutes = duration_input(tr(language, "flight_time"), "log_flight_time", show_label=True)
+        else:
+            st.caption(tr(language, "flight_time"))
+            st.metric(tr(language, "calculated_total"), format_duration(suggested_minutes))
+            override_total = st.checkbox(tr(language, "override_total_time"), key="log_override_total_time")
+            if override_total:
+                flight_minutes = duration_input(
+                    tr(language, "flight_time"),
+                    "log_flight_time",
+                    default_minutes=suggested_minutes,
+                    default_signature=f"{flight_date.isoformat()}|{route_time_signature}",
+                )
+            else:
+                flight_minutes = suggested_minutes
     landings = col_landings.number_input(tr(language, "landings"), min_value=minimum_landings, step=1, value=minimum_landings)
     remarks = st.text_area(tr(language, "remarks"), height=80)
 
     if st.button(tr(language, "save_flight"), width="stretch", type="primary"):
         if selected_aircraft == NEW_AIRCRAFT and (not new_registration or not new_profile.get("type")):
-            st.error("Add registration and aircraft type before saving a new aircraft.")
+            st.error(tr(language, "add_registration_type_before_save_new"))
         else:
             if selected_aircraft == NEW_AIRCRAFT:
                 save_new_aircraft_if_needed(data, new_registration, new_profile, new_image)
@@ -558,18 +887,22 @@ def render_logbook(data: dict) -> None:
                 "landings": int(landings),
                 "route_events": route_events,
                 "remarks": remarks.strip(),
-                "departure_utc": route_times[0] if route_times else "",
-                "arrival_utc": route_times[-1] if route_times else "",
             }
             boundary_times = route_times_to_boundaries(flight_date, route_times)
+            if boundary_times:
+                base_flight["departure_utc"] = boundary_times[0]
+                base_flight["arrival_utc"] = boundary_times[-1]
+            else:
+                base_flight["departure_utc"] = route_times[0] if route_times else ""
+                base_flight["arrival_utc"] = route_times[-1] if route_times else ""
             flights.extend(build_sector_flights(base_flight, route_events, boundary_times))
-            save_data(data)
-            st.success("Flight saved.")
+            save_data(all_data)
+            st.success(tr(language, "flight_saved"))
             st.rerun()
 
     st.subheader(tr(language, "flights"))
     if not flights:
-        st.info("No flights yet.")
+        st.info(tr(language, "no_flights"))
     else:
         render_flight_cards(flights)
         with st.expander(tr(language, "delete_logbook_entries")):
@@ -585,8 +918,8 @@ def render_logbook(data: dict) -> None:
                     for index, flight in enumerate(flights)
                     if index not in set(selected_for_delete)
                 ]
-                save_data(data)
-                st.success("Selected entries deleted.")
+                save_data(all_data)
+                st.success(tr(language, "selected_entries_deleted"))
                 st.rerun()
 
 
@@ -654,11 +987,11 @@ def render_in_flight(data: dict) -> None:
 
         if st.button(tr(language, "log_off_blocks"), width="stretch", type="primary"):
             if selected_aircraft == NEW_AIRCRAFT and (not new_registration or not new_profile.get("type")):
-                st.error("Add registration and aircraft type before starting.")
+                st.error(tr(language, "add_registration_type_before_start"))
             else:
                 if selected_aircraft == NEW_AIRCRAFT:
                     save_new_aircraft_if_needed(data, new_registration, new_profile, new_image)
-                    save_data(data)
+                    save_data(all_data)
                 st.session_state.active_flight = {
                     "aircraft_registration": selected_registration,
                     "departure": departure,
@@ -675,10 +1008,9 @@ def render_in_flight(data: dict) -> None:
                 }
                 st.rerun()
         return
-
-    st.metric("Aircraft", aircraft_label(active["aircraft_registration"], profiles))
+    st.metric(tr(language, "aircraft"), aircraft_label(active["aircraft_registration"], profiles))
     col_a, col_b, col_c = st.columns(3)
-    col_a.metric("Route", f"{active['departure']} → {active['arrival']}")
+    col_a.metric(tr(language, "route"), f"{active['departure']} → {active['arrival']}")
     logged_route_landings = sum(
         int(event.get("landing_count", 1))
         for event in active.get("route_events", [])
@@ -738,17 +1070,17 @@ def render_in_flight(data: dict) -> None:
                 "on_blocks_utc": active["on_blocks_utc"],
             }
             flights.extend(build_sector_flights(base_flight, route_events, boundary_times))
-            save_data(data)
+            save_data(all_data)
             del st.session_state.active_flight
             st.success("Flight saved from in-flight logger.")
             st.rerun()
 
     if active["landing_times_utc"]:
-        st.write("Landing times")
+        st.write(tr(language, "landing_times"))
         st.html(
             '<div class="card-grid">'
             + "".join(
-                f'<div class="info-card"><div class="info-title">{html.escape(value)}</div><div class="info-sub">UTC landing</div></div>'
+                f'<div class="info-card"><div class="info-title">{html.escape(value)}</div><div class="info-sub">{html.escape(tr(language, "utc_landing"))}</div></div>'
                 for value in active["landing_times_utc"]
             )
             + "</div>"
@@ -759,7 +1091,9 @@ def render_in_flight(data: dict) -> None:
 
 
 def render_currency(data: dict) -> None:
-    st.subheader("Passenger Currency")
+    st.subheader("Currency & Deadlines")
+
+    st.markdown("### Passenger Currency")
     statuses = [pax_currency(data["flights"], rule) for rule in data["currency_rules"]]
     cols = st.columns(max(1, min(3, len(statuses))))
     for idx, status in enumerate(statuses):
@@ -788,8 +1122,54 @@ def render_currency(data: dict) -> None:
                         "notes": notes.strip(),
                     }
                 )
-                save_data(data)
+                save_data(all_data)
                 st.rerun()
+
+    st.divider()
+    st.markdown("### Deadlines")
+    urgent = [item for item in data["deadlines"] if deadline_status(item)[1] != "OK"]
+    st.metric("Needs attention", len(urgent))
+
+    quick_cols = st.columns(3)
+    if quick_cols[0].button("Add licence expiry", width="stretch"):
+        st.session_state.deadline_template = ("Licence", "Licence / rating", 90)
+    if quick_cols[1].button("Add medical expiry", width="stretch"):
+        st.session_state.deadline_template = ("Medical", "Medical", 60)
+    if quick_cols[2].button("Add rating expiry", width="stretch"):
+        st.session_state.deadline_template = ("Rating", "Licence / rating", 90)
+
+    render_deadline_cards(data["deadlines"])
+
+    template = st.session_state.get("deadline_template", ("", "Medical", 60))
+    category_options = ["Medical", "Licence / rating", "Currency", "Insurance", "Other"]
+    template_category = template[1] if template[1] in category_options else "Medical"
+
+    with st.form("deadline_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        name = col1.text_input("Item", value=template[0], placeholder="Language proficiency")
+        category = col2.selectbox(
+            "Category",
+            category_options,
+            index=category_options.index(template_category),
+        )
+        col3, col4 = st.columns(2)
+        expires = col3.date_input("Expiry date", value=date.today())
+        remind_days = col4.number_input("Remind me days before", min_value=1, value=int(template[2]), step=1)
+        notes = st.text_area("Notes", height=80)
+
+        if st.form_submit_button("Save deadline", width="stretch"):
+            data["deadlines"].append(
+                {
+                    "name": name.strip() or category,
+                    "category": category,
+                    "expires": expires.isoformat(),
+                    "remind_days": int(remind_days),
+                    "notes": notes.strip(),
+                }
+            )
+            st.session_state.deadline_template = ("", "Medical", 60)
+            save_data(all_data)
+            st.rerun()
 
 
 def render_deadlines(data: dict) -> None:
@@ -828,12 +1208,14 @@ def render_deadlines(data: dict) -> None:
                 }
             )
             st.session_state.deadline_template = ("", "Medical", 60)
-            save_data(data)
+            save_data(all_data)
             st.rerun()
 
 
 def render_data(data: dict) -> None:
     st.subheader("Data")
+    current_user_id = get_current_user_id()
+    st.caption(f"Current account: {current_account_label(all_data, current_user_id)}")
     st.info(f"Airport database: {len(AIRPORTS):,} France and Switzerland airport entries from OurAirports.")
     with st.expander("Add aircraft to database"):
         registration, profile, image = aircraft_form("data_new_aircraft")
@@ -845,12 +1227,91 @@ def render_data(data: dict) -> None:
             else:
                 profile["image_path"] = save_aircraft_image(registration, image)
                 data["aircraft_profiles"][registration] = profile
-                save_data(data)
+                save_data(all_data)
                 st.success("Aircraft saved.")
                 st.rerun()
     if data["aircraft_profiles"]:
         st.subheader("Aircraft")
         render_aircraft_cards(data["aircraft_profiles"])
+        with st.expander("Edit aircraft in database"):
+            options = sorted(data["aircraft_profiles"])
+            selected_edit_aircraft = st.selectbox(
+                "Aircraft to edit",
+                options,
+                format_func=lambda registration: aircraft_label(registration, data["aircraft_profiles"]),
+                key="edit_aircraft_select",
+            )
+            profile = data["aircraft_profiles"][selected_edit_aircraft]
+            edit_key = selected_edit_aircraft.replace("-", "_")
+            if profile.get("image_path"):
+                show_aircraft_image(profile)
+            with st.form("edit_aircraft_form"):
+                edit_col_1, edit_col_2 = st.columns(2)
+                updated_registration = edit_col_1.text_input(
+                    "Registration",
+                    value=profile.get("registration", selected_edit_aircraft),
+                    key=f"edit_aircraft_registration_{edit_key}",
+                ).upper().strip()
+                updated_type = edit_col_2.text_input(
+                    "Aircraft type",
+                    value=profile.get("type", ""),
+                    key=f"edit_aircraft_type_{edit_key}",
+                ).upper().strip()
+                edit_col_3, edit_col_4 = st.columns(2)
+                updated_manufacturer = edit_col_3.text_input(
+                    "Manufacturer",
+                    value=profile.get("manufacturer", ""),
+                    key=f"edit_aircraft_manufacturer_{edit_key}",
+                ).strip()
+                updated_category = edit_col_4.text_input(
+                    "Category / class",
+                    value=profile.get("category", ""),
+                    key=f"edit_aircraft_category_{edit_key}",
+                ).upper().strip()
+                updated_image = st.file_uploader(
+                    "Aircraft picture",
+                    type=["jpg", "jpeg", "png"],
+                    key=f"edit_aircraft_image_{edit_key}",
+                )
+                remove_image = st.checkbox(
+                    "Remove current picture",
+                    disabled=not bool(profile.get("image_path")),
+                    key=f"edit_aircraft_remove_image_{edit_key}",
+                )
+                updated_notes = st.text_area(
+                    "Aircraft notes",
+                    value=profile.get("notes", ""),
+                    height=80,
+                    key=f"edit_aircraft_notes_{edit_key}",
+                ).strip()
+                if st.form_submit_button("Save aircraft changes", width="stretch", type="primary"):
+                    if not updated_registration or not updated_type:
+                        st.error("Add registration and aircraft type before saving.")
+                    elif updated_registration != selected_edit_aircraft and updated_registration in data["aircraft_profiles"]:
+                        st.error("That aircraft already exists in the database.")
+                    else:
+                        image_path = profile.get("image_path", "")
+                        if updated_image is not None:
+                            image_path = save_aircraft_image(updated_registration, updated_image)
+                        elif remove_image:
+                            image_path = ""
+                        updated_profile = {
+                            "registration": updated_registration,
+                            "type": updated_type,
+                            "manufacturer": updated_manufacturer,
+                            "category": updated_category,
+                            "notes": updated_notes,
+                            "image_path": image_path,
+                        }
+                        if updated_registration != selected_edit_aircraft:
+                            data["aircraft_profiles"].pop(selected_edit_aircraft, None)
+                            for flight in data["flights"]:
+                                if flight.get("aircraft_registration") == selected_edit_aircraft:
+                                    flight["aircraft_registration"] = updated_registration
+                        data["aircraft_profiles"][updated_registration] = updated_profile
+                        save_data(all_data)
+                        st.success("Aircraft updated.")
+                        st.rerun()
         with st.expander("Delete aircraft from database"):
             used_aircraft = {flight.get("aircraft_registration") for flight in data["flights"]}
             options = sorted(data["aircraft_profiles"])
@@ -871,34 +1332,144 @@ def render_data(data: dict) -> None:
                 for registration in deletable:
                     profile = data["aircraft_profiles"].pop(registration, {})
                     delete_aircraft_image(profile)
-                save_data(data)
+                save_data(all_data)
                 st.success("Selected aircraft deleted.")
                 st.rerun()
-    st.download_button("Download logbook backup", data=json.dumps(data, indent=2), file_name="pilot_logbook_backup.json", mime="application/json", width="stretch")
-    uploaded = st.file_uploader("Restore from JSON backup", type=["json"])
+    st.download_button(
+        "Download my logbook backup",
+        data=json.dumps(data, indent=2),
+        file_name=f"pilot_logbook_backup_{current_user_id.replace('@', '_at_')}.json",
+        mime="application/json",
+        width="stretch",
+    )
+    uploaded = st.file_uploader("Restore my account from JSON backup", type=["json"])
     if uploaded is not None:
         restored = json.loads(uploaded.getvalue().decode("utf-8"))
         if "flights" in restored and "deadlines" in restored:
-            save_data(restored)
-            st.success("Backup restored.")
+            data.clear()
+            data.update(restored)
+            save_data(all_data)
+            st.success("Your account backup was restored.")
             st.rerun()
         else:
             st.error("That backup does not look like a pilot logbook file.")
 
 
+def render_account(data: dict, all_data: dict) -> None:
+    current_user_id = get_current_user_id()
+    account = all_data.get("accounts", {}).get(current_user_id, {})
+    username = account.get("username", current_user_id)
+    email = account.get("email", current_user_id)
+
+    st.subheader("Account")
+    st.caption("Local login for this prototype. Passwords are only for separating local demo accounts on this machine.")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Current user", username)
+    col2.metric("Flights", len(data.get("flights", [])))
+    col3.metric("Aircraft", len(data.get("aircraft_profiles", {})))
+    st.caption(f"Email: {email}")
+
+    st.divider()
+    st.write("Log in")
+    with st.form("account_login_form"):
+        login = st.text_input("Email or username", placeholder="demo")
+        password = st.text_input("Password", type="password", placeholder="demo")
+        login_col, demo_col = st.columns(2)
+        submitted = login_col.form_submit_button("Log in", type="primary", width="stretch")
+        demo_submitted = demo_col.form_submit_button("Use demo account", width="stretch")
+        if submitted or demo_submitted:
+            login_value = "demo" if demo_submitted else login
+            password_value = "demo" if demo_submitted else password
+            logged_in = authenticate_account(all_data, login_value, password_value)
+            if logged_in:
+                set_active_account(logged_in["user_id"])
+                get_user_data(all_data, logged_in["user_id"])
+                save_data(all_data)
+                st.success(f"Logged in as {logged_in.get('username', logged_in['user_id'])}.")
+                st.rerun()
+            else:
+                st.error("Email/username and password do not match.")
+
+    st.divider()
+    st.write("Create account")
+    with st.form("account_create_form"):
+        new_col_1, new_col_2 = st.columns(2)
+        new_email = new_col_1.text_input("Email", placeholder="arthur@example.com")
+        new_username = new_col_2.text_input("Username", placeholder="arthur")
+        new_password = st.text_input("Password", type="password")
+        if st.form_submit_button("Create account", width="stretch"):
+            ok, message, user_id = create_account(all_data, new_email, new_username, new_password)
+            if ok and user_id:
+                set_active_account(user_id)
+                save_data(all_data)
+                st.success(message)
+                st.rerun()
+            else:
+                st.error(message)
+
+    st.divider()
+    st.write("Known local accounts")
+    account_rows = []
+    for saved_account in sorted(all_data.get("accounts", {}).values(), key=lambda item: item.get("username", "")):
+        saved_user_id = saved_account.get("user_id", "")
+        account_rows.append(
+            {
+                "Username": saved_account.get("username", saved_user_id),
+                "Email": saved_account.get("email", saved_user_id),
+                "Flights": len(all_data.get("users", {}).get(saved_user_id, {}).get("flights", [])),
+            }
+        )
+    if account_rows:
+        st.dataframe(pd.DataFrame(account_rows), width="stretch", hide_index=True)
+
+    legacy_account = find_account(all_data, "legacy@local")
+    if legacy_account and st.button("Use legacy account", width="stretch"):
+        set_active_account(legacy_account["user_id"])
+        get_user_data(all_data, legacy_account["user_id"])
+        save_data(all_data)
+        st.rerun()
+
+    if account and not account.get("password_hash"):
+        st.info("This migrated account does not have a password yet. Create a new account when you want a password-protected local profile.")
+
+    st.divider()
+    st.write("Account backup")
+    st.download_button(
+        "Download this account backup",
+        data=json.dumps(data, indent=2),
+        file_name=f"pilot_logbook_backup_{current_user_id.replace('@', '_at_')}.json",
+        mime="application/json",
+        width="stretch",
+    )
+
+    uploaded = st.file_uploader("Restore this account from JSON backup", type=["json"], key="account_restore")
+    if uploaded is not None:
+        restored = json.loads(uploaded.getvalue().decode("utf-8"))
+        if "flights" in restored and "deadlines" in restored:
+            data.clear()
+            data.update(restored)
+            save_data(all_data)
+            st.success("This account backup was restored.")
+            st.rerun()
+        else:
+            st.error("That backup does not look like a pilot logbook file.")
+
+
+
 page_setup()
-data = load_data()
+all_data = load_data()
+current_user_id = get_current_user_id()
+data = get_user_data(all_data, current_user_id)
 current_page = render_navigation()
 
 if current_page == "home":
     render_home(data)
 elif current_page == "logbook":
     render_logbook(data)
-elif current_page == "in_flight":
-    render_in_flight(data)
 elif current_page == "currency":
     render_currency(data)
-elif current_page == "deadlines":
-    render_deadlines(data)
 elif current_page == "data":
     render_data(data)
+elif current_page == "account":
+    render_account(data, all_data)

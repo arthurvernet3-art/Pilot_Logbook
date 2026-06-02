@@ -586,10 +586,33 @@ def page_setup() -> None:
         ============================================================ */
         div[data-testid="stPopover"] {
             margin-top: 0.5rem !important;
+            position: relative !important;
         }
         @media (max-width: 760px) {
             div[data-testid="stPopover"] {
                 margin-top: 1rem !important;
+            }
+        }
+        @media (max-width: 768px) {
+            div[data-testid="stPopoverBody"] {
+                position: absolute !important;
+                top: calc(100% + 6px) !important;
+                right: 0 !important;
+                left: auto !important;
+                bottom: auto !important;
+                width: 280px !important;
+                max-width: calc(100vw - 2rem) !important;
+                height: auto !important;
+                min-height: auto !important;
+                max-height: 80vh !important;
+                box-shadow: 0 12px 36px rgba(0,0,0,0.15) !important;
+                border-radius: 16px !important;
+                border: 1px solid var(--card-border) !important;
+                background-color: var(--card-bg) !important;
+                transform: none !important;
+                z-index: 999999 !important;
+                overflow-y: auto !important;
+                padding: 1rem !important;
             }
         }
         div[data-testid="stPopover"] > button {

@@ -32,6 +32,10 @@ from storage import (
     load_data,
     save_aircraft_image,
     save_data,
+    authenticate_account,
+    create_account,
+    find_account,
+    normalize_user_id,
 )
 
 from ui_components import (
@@ -48,115 +52,9 @@ from ui_components import (
 
 
 
-DEFAULT_USER_ID = "arthur@local"
-DEFAULT_ACCOUNT_DEADLINES = [
-    {
-        "name": "Class 2 medical",
-        "category": "Medical",
-        "expires": "2026-09-30",
-        "remind_days": 60,
-        "notes": "Book AME appointment early.",
-    },
-    {
-        "name": "SEP rating",
-        "category": "Licence / rating",
-        "expires": "2027-03-31",
-        "remind_days": 90,
-        "notes": "Check refresher requirements.",
-    },
-]
-DEFAULT_ACCOUNT_CURRENCY_RULES = [
-    {
-        "name": "Default pax currency",
-        "airport": "",
-        "lookback_days": 90,
-        "required_landings": 3,
-        "notes": "Standard passenger-carrying check.",
-    },
-    {
-        "name": "LFLI pax currency",
-        "airport": "LFLI",
-        "lookback_days": 45,
-        "required_landings": 3,
-        "notes": "Local stricter check.",
-    },
-]
-
-
-def password_hash(password: str) -> str:
-    return hashlib.sha256(str(password or "").encode("utf-8")).hexdigest()
-
-
-def normalize_account_id(value: str) -> str:
-    cleaned = str(value or "").strip().lower()
-    return cleaned or "anonymous@local"
-
-
-def account_record(user_id: str, username: str | None = None, email: str | None = None, password: str = "") -> dict:
-    normalized_user_id = normalize_account_id(user_id)
-    return {
-        "user_id": normalized_user_id,
-        "username": normalize_account_id(username or normalized_user_id.split("@")[0]),
-        "email": normalize_account_id(email or normalized_user_id),
-        "password_hash": password_hash(password),
-    }
-
-
-def empty_account_data() -> dict:
-    return {
-        "flights": [],
-        "aircraft_profiles": {},
-        "deadlines": deepcopy(DEFAULT_ACCOUNT_DEADLINES),
-        "currency_rules": deepcopy(DEFAULT_ACCOUNT_CURRENCY_RULES),
-    }
-
-
-def find_account(data: dict, login: str) -> dict | None:
-    cleaned = normalize_account_id(login)
-    for account in data.get("accounts", {}).values():
-        aliases = {
-            normalize_account_id(account.get("user_id", "")),
-            normalize_account_id(account.get("username", "")),
-            normalize_account_id(account.get("email", "")),
-        }
-        if cleaned in aliases:
-            return account
-    return None
-
-
-def authenticate_account(data: dict, login: str, password: str) -> dict | None:
-    account = find_account(data, login)
-    if not account:
-        return None
-    stored_hash = account.get("password_hash", "")
-    if stored_hash and stored_hash == password_hash(password):
-        return account
-    return None
-
-
-def create_account(data: dict, email: str, username: str, password: str) -> tuple[bool, str, str | None]:
-    if not str(email or "").strip() or not str(username or "").strip() or not str(password or ""):
-        return False, "Add an email, username, and password.", None
-    email = normalize_account_id(email)
-    username = normalize_account_id(username)
-    if find_account(data, email) or find_account(data, username):
-        return False, "That email or username already exists.", None
-
-    user_id = email
-    data.setdefault("users", {})[user_id] = empty_account_data()
-    data.setdefault("accounts", {})[user_id] = account_record(user_id, username=username, email=email, password=password)
-    return True, f"Created account {username}.", user_id
-
-
-def get_current_user_id() -> str:
-    """Return the active local account id for this session."""
-    requested_account = st.query_params.get("account")
-    if isinstance(requested_account, list):
-        requested_account = requested_account[0] if requested_account else None
-    if requested_account:
-        st.session_state.current_user_id = str(requested_account).strip().lower()
-    st.session_state.setdefault("current_user_id", DEFAULT_USER_ID)
-    return str(st.session_state.current_user_id).strip().lower() or DEFAULT_USER_ID
+def get_current_user_id() -> str | None:
+    """Return the active local account id for this session, if set."""
+    return st.session_state.get("current_user_id")
 
 
 def current_account_label(all_data: dict, user_id: str) -> str:
@@ -171,53 +69,144 @@ def set_active_account(user_id: str) -> None:
     st.query_params["account"] = user_id
 
 
-def demo_account_data() -> dict:
-    return {
-        "flights": [
-            {"date": "2026-05-28", "aircraft_registration": "HB-DEMO", "departure": "LSGG", "arrival": "LFLI", "pic_minutes": 42, "dual_minutes": 0, "night_minutes": 0, "landings": 2, "route_events": [{"airport": "LFLP", "type": "touch_and_go", "landing_count": 1, "count_as_landing": True}], "remarks": "Geneva local currency warm-up."},
-            {"date": "2026-05-22", "aircraft_registration": "HB-DEMO", "departure": "LFLI", "arrival": "LSGS", "pic_minutes": 74, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Alpine valley navigation to Sion."},
-            {"date": "2026-05-14", "aircraft_registration": "HB-DEMO", "departure": "LSGS", "arrival": "LSZA", "pic_minutes": 88, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Mountain route via Ticino."},
-            {"date": "2026-05-05", "aircraft_registration": "HB-DEMO", "departure": "LSZA", "arrival": "LSZH", "pic_minutes": 66, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Lugano to Zurich."},
-            {"date": "2026-04-27", "aircraft_registration": "HB-DEMO", "departure": "LSZH", "arrival": "LFSB", "pic_minutes": 58, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Zurich to Basel."},
-            {"date": "2026-04-16", "aircraft_registration": "F-HDEM", "departure": "LFSB", "arrival": "LFST", "pic_minutes": 52, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Alsace hop."},
-            {"date": "2026-04-07", "aircraft_registration": "F-HDEM", "departure": "LFST", "arrival": "LFGJ", "pic_minutes": 70, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Strasbourg to Jura."},
-            {"date": "2026-03-29", "aircraft_registration": "F-HDEM", "departure": "LFGJ", "arrival": "LFLL", "pic_minutes": 76, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Dole to Lyon."},
-            {"date": "2026-03-18", "aircraft_registration": "F-HDEM", "departure": "LFLL", "arrival": "LFLB", "pic_minutes": 44, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Lyon to Chambery."},
-            {"date": "2026-03-08", "aircraft_registration": "F-HDEM", "departure": "LFLB", "arrival": "LFLS", "pic_minutes": 46, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Chambery to Grenoble."},
-            {"date": "2026-02-25", "aircraft_registration": "F-HDEM", "departure": "LFLS", "arrival": "LFMN", "pic_minutes": 82, "dual_minutes": 0, "night_minutes": 0, "landings": 1, "route_events": [], "remarks": "Alps to the Riviera."},
-            {"date": "2026-02-14", "aircraft_registration": "F-HDEM", "departure": "LFMN", "arrival": "LFMD", "pic_minutes": 36, "dual_minutes": 0, "night_minutes": 0, "landings": 2, "route_events": [], "remarks": "Cote d'Azur landing practice."},
-        ],
-        "aircraft_profiles": {
-            "HB-DEMO": {"registration": "HB-DEMO", "type": "DA40", "manufacturer": "Diamond", "category": "SEP", "notes": "Demo Swiss touring aircraft.", "image_path": ""},
-            "F-HDEM": {"registration": "F-HDEM", "type": "DR400", "manufacturer": "Robin", "category": "SEP", "notes": "Demo French touring aircraft.", "image_path": ""},
-        },
-        "deadlines": deepcopy(DEFAULT_ACCOUNT_DEADLINES),
-        "currency_rules": deepcopy(DEFAULT_ACCOUNT_CURRENCY_RULES),
-    }
+def logout() -> None:
+    st.session_state.current_user_id = None
+    if "account" in st.query_params:
+        del st.query_params["account"]
 
 
-def ensure_app_accounts(all_data: dict) -> bool:
-    changed = False
-    all_data.setdefault("users", {})
-    accounts = all_data.setdefault("accounts", {})
-    for user_id in list(all_data["users"]):
-        normalized_user_id = normalize_account_id(user_id)
-        if normalized_user_id not in accounts:
-            accounts[normalized_user_id] = account_record(normalized_user_id)
-            accounts[normalized_user_id]["password_hash"] = ""
-            changed = True
-    if "demo" not in accounts or accounts["demo"].get("password_hash") != password_hash("demo"):
-        accounts["demo"] = {
-            "user_id": "demo",
-            "username": "demo",
-            "email": "demo",
-            "password_hash": password_hash("demo"),
+def initialize_session(all_data: dict) -> None:
+    st.session_state.setdefault("language", "en")
+    
+    requested_account = st.query_params.get("account")
+    if isinstance(requested_account, list):
+        requested_account = requested_account[0] if requested_account else None
+    
+    current_session_user = st.session_state.get("current_user_id")
+    
+    if requested_account:
+        normalized_req = requested_account.strip().lower()
+        if current_session_user != normalized_req:
+            account = find_account(all_data, normalized_req)
+            if account:
+                if not account.get("password_hash"):
+                    st.session_state.current_user_id = account["user_id"]
+                    st.query_params["account"] = account["user_id"]
+                else:
+                    st.session_state.current_user_id = None
+            else:
+                st.session_state.current_user_id = None
+    else:
+        if "current_user_id" not in st.session_state:
+            st.session_state.current_user_id = None
+            
+    current_user = st.session_state.get("current_user_id")
+    if current_user:
+        st.query_params["account"] = current_user
+
+
+def render_login_page(all_data: dict) -> None:
+    language = st.session_state.language
+    
+    lang_cols = st.columns([3.8, 2.2])
+    with lang_cols[1]:
+        lc = st.columns(5)
+        if lc[0].button("🇬🇧", key="login_lang_en", use_container_width=True, type="primary" if language == "en" else "secondary"):
+            st.session_state.language = "en"
+            st.rerun()
+        if lc[1].button("🇫🇷", key="login_lang_fr", use_container_width=True, type="primary" if language == "fr" else "secondary"):
+            st.session_state.language = "fr"
+            st.rerun()
+        if lc[2].button("🇩🇪", key="login_lang_de", use_container_width=True, type="primary" if language == "de" else "secondary"):
+            st.session_state.language = "de"
+            st.rerun()
+        if lc[3].button("🇮🇹", key="login_lang_it", use_container_width=True, type="primary" if language == "it" else "secondary"):
+            st.session_state.language = "it"
+            st.rerun()
+        if lc[4].button("🇪🇸", key="login_lang_es", use_container_width=True, type="primary" if language == "es" else "secondary"):
+            st.session_state.language = "es"
+            st.rerun()
+            
+    language = st.session_state.language
+    
+    st.html(
+        f"""
+        <div class="login-hero">
+            <span style="font-size: 3.8rem; filter: drop-shadow(0 8px 16px rgba(31, 111, 235, 0.15));">✈️</span>
+            <h1 class="login-hero-title">{tr(language, "app_title")}</h1>
+            <p class="login-hero-subtitle">{tr(language, "welcome_logbook")}</p>
+        </div>
+        """
+    )
+    
+    left_space, center_col, right_space = st.columns([1, 2.2, 1])
+    with center_col:
+        mode_options = {
+            "login": tr(language, "login"),
+            "register": tr(language, "create_account"),
+            "demo": tr(language, "use_demo_account")
         }
-        changed = True
-    if "demo" not in all_data["users"]:
-        all_data["users"]["demo"] = demo_account_data()
-        changed = True
-    return changed
+        selected_mode = st.segmented_control(
+            "Account Mode",
+            options=list(mode_options),
+            format_func=lambda key: mode_options[key],
+            default="login",
+            key="login_page_mode",
+            label_visibility="collapsed"
+        )
+        
+        pref_username = ""
+        requested_account = st.query_params.get("account")
+        if isinstance(requested_account, list):
+            requested_account = requested_account[0] if requested_account else None
+        if requested_account:
+            pref_username = requested_account
+            
+        st.markdown("<div style='height: 1.2rem;'></div>", unsafe_allow_html=True)
+        
+        if selected_mode == "login":
+            with st.form("login_form_page"):
+                login_user = st.text_input(tr(language, "account_email_local_id"), value=pref_username, placeholder="e.g. pilot123")
+                login_pass = st.text_input(tr(language, "password"), type="password")
+                if st.form_submit_button(tr(language, "login"), type="primary", width="stretch"):
+                    logged_in = authenticate_account(all_data, login_user, login_pass)
+                    if logged_in:
+                        st.session_state.current_user_id = logged_in["user_id"]
+                        st.query_params["account"] = logged_in["user_id"]
+                        st.success(tr(language, "success_logged_in"))
+                        st.rerun()
+                    else:
+                        st.error(tr(language, "login_error"))
+                        
+        elif selected_mode == "register":
+            with st.form("register_form_page"):
+                reg_email = st.text_input(tr(language, "email"), placeholder="arthur@example.com")
+                reg_username = st.text_input(tr(language, "username"), placeholder="arthur")
+                reg_password = st.text_input(tr(language, "password"), type="password")
+                if st.form_submit_button(tr(language, "create_account"), type="primary", width="stretch"):
+                    ok, msg, user_id = create_account(all_data, reg_email, reg_username, reg_password)
+                    if ok and user_id:
+                        st.session_state.current_user_id = user_id
+                        st.query_params["account"] = user_id
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.error(msg)
+                        
+        elif selected_mode == "demo":
+            st.html(
+                f"""
+                <div class="demo-intro-box">
+                    <p class="demo-intro-text">{tr(language, "demo_intro")}</p>
+                </div>
+                """
+            )
+            if st.button(tr(language, "launch_demo"), type="primary", width="stretch"):
+                logged_in = authenticate_account(all_data, "demo", "demo")
+                if logged_in:
+                    st.session_state.current_user_id = logged_in["user_id"]
+                    st.query_params["account"] = logged_in["user_id"]
+                    st.rerun()
 
 
 def page_setup() -> None:
@@ -226,265 +215,893 @@ def page_setup() -> None:
     st.markdown(
         """
         <style>
-        .block-container {padding-top: 1.2rem; padding-bottom: 4rem; max-width: 1180px;}
-        div[data-testid="stMetric"] {border: 1px solid #e6e8eb; border-radius: 8px; padding: .8rem;}
-        .status-ok {color: #116329; font-weight: 700;}
-        .status-warn {color: #9a5b00; font-weight: 700;}
-        .status-bad {color: #b42318; font-weight: 700;}
+        /* ============================================================
+           APPLE HIG DESIGN TOKENS — light mode defaults
+        ============================================================ */
+        :root {
+            /* System backgrounds */
+            --sys-bg-primary:    #f2f2f7;
+            --sys-bg-secondary:  #ffffff;
+            --sys-bg-tertiary:   #e5e5ea;
+            --sys-bg-grouped:    #f2f2f7;
+
+            /* Cards / surfaces */
+            --card-bg:           #ffffff;
+            --card-bg-alt:       #f2f2f7;
+            --card-gradient:     none;
+            --card-border:       rgba(0, 0, 0, 0.06);
+            --card-shadow:       0 8px 24px rgba(0, 0, 0, 0.04);
+
+            /* Text */
+            --text-primary:      #000000;
+            --text-secondary:    #3c3c4399; /* 60% opacity */
+            --text-tertiary:     #3c3c434d; /* 30% opacity */
+            --text-label:        #3c3c4399;
+
+            /* Borders / separators */
+            --border-color:      rgba(0, 0, 0, 0.08);
+            --border-light:      rgba(0, 0, 0, 0.04);
+            --border-input:      rgba(0, 0, 0, 0.12);
+            --border-radio:      rgba(0, 0, 0, 0.15);
+
+            /* Accent — Apple blue */
+            --accent:            #007aff;
+            --accent-dark:       #0056b3;
+            --accent-bg:         rgba(0, 122, 255, 0.1);
+            --accent-hover-bg:   rgba(0, 122, 255, 0.05);
+            --accent-border:     rgba(0, 122, 255, 0.2);
+
+            /* Secondary accent — indigo */
+            --indigo:            #5856d6;
+
+            /* Popover button */
+            --popover-btn-bg:    #ffffff;
+            --popover-btn-border:rgba(0, 0, 0, 0.12);
+
+            /* Form */
+            --form-bg:           #ffffff;
+            --form-border:       rgba(0, 0, 0, 0.08);
+
+            /* Radio unselected chip */
+            --radio-chip-bg:     #f2f2f7;
+
+            /* Status — Apple system green/amber/red */
+            --status-ok:         #34c759;
+            --status-ok-bg:      rgba(52, 199, 89, 0.12);
+            --status-warn:       #ff9500;
+            --status-warn-bg:    rgba(255, 149, 0, 0.12);
+            --status-bad:        #ff3b30;
+            --status-bad-bg:     rgba(255, 59, 48, 0.12);
+
+            /* Home status row */
+            --status-row-bg:     #f2f2f7;
+            --status-row-border: rgba(0, 0, 0, 0.04);
+
+            /* Profile card */
+            --profile-bg:        #ffffff;
+            --profile-border:    rgba(0, 0, 0, 0.08);
+
+            /* Demo intro box */
+            --demo-box-bg:       #f2f2f7;
+            --demo-box-border:   rgba(0, 0, 0, 0.05);
+
+            /* Aircraft placeholder */
+            --aircraft-ph-bg:    rgba(0, 122, 255, 0.06);
+            --aircraft-ph-border:rgba(0, 122, 255, 0.12);
+            --aircraft-ph-color: #007aff;
+
+            /* Metric widget */
+            --metric-border:     rgba(0, 0, 0, 0.06);
+        }
+
+        /* ============================================================
+           DARK MODE — Apple HIG dark palette
+        ============================================================ */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --sys-bg-primary:    #000000;
+                --sys-bg-secondary:  #1c1c1e;
+                --sys-bg-tertiary:   #2c2c2e;
+                --sys-bg-grouped:    #000000;
+
+                --card-bg:           #1c1c1e;
+                --card-bg-alt:       #2c2c2e;
+                --card-gradient:     none;
+                --card-border:       rgba(255, 255, 255, 0.08);
+                --card-shadow:       0 8px 30px rgba(0, 0, 0, 0.5);
+
+                --text-primary:      #ffffff;
+                --text-secondary:    #ebebf599; /* 60% opacity */
+                --text-tertiary:     #ebebf54d; /* 30% opacity */
+                --text-label:        #ebebf599;
+
+                --border-color:      rgba(255, 255, 255, 0.1);
+                --border-light:      rgba(255, 255, 255, 0.05);
+                --border-input:      rgba(255, 255, 255, 0.15);
+                --border-radio:      rgba(255, 255, 255, 0.2);
+
+                --accent:            #0a84ff;
+                --accent-dark:       #0066cc;
+                --accent-bg:         rgba(10, 132, 255, 0.15);
+                --accent-hover-bg:   rgba(10, 132, 255, 0.08);
+                --accent-border:     rgba(10, 132, 255, 0.25);
+
+                --indigo:            #5e5ce6;
+
+                --popover-btn-bg:    #1c1c1e;
+                --popover-btn-border:rgba(255, 255, 255, 0.15);
+
+                --form-bg:           #1c1c1e;
+                --form-border:       rgba(255, 255, 255, 0.08);
+
+                --radio-chip-bg:     #2c2c2e;
+
+                --status-ok:         #30d158;
+                --status-ok-bg:      rgba(48, 209, 88, 0.15);
+                --status-warn:       #ffd60a;
+                --status-warn-bg:    rgba(255, 214, 10, 0.15);
+                --status-bad:        #ff453a;
+                --status-bad-bg:     rgba(255, 69, 58, 0.15);
+
+                --status-row-bg:     #2c2c2e;
+                --status-row-border: rgba(255, 255, 255, 0.05);
+
+                --profile-bg:        #1c1c1e;
+                --profile-border:    rgba(255, 255, 255, 0.08);
+
+                --demo-box-bg:       #2c2c2e;
+                --demo-box-border:   rgba(255, 255, 255, 0.08);
+
+                --aircraft-ph-bg:    rgba(10, 132, 255, 0.1);
+                --aircraft-ph-border:rgba(10, 132, 255, 0.2);
+                --aircraft-ph-color: #0a84ff;
+
+                --metric-border:     rgba(255, 255, 255, 0.08);
+            }
+        }
+
+        /* ============================================================
+           GLOBAL RESET & TYPOGRAPHY
+        ============================================================ */
+        html, body, [data-testid="stAppViewContainer"], .stApp, select, input, button, textarea, p, h1, h2, h3, h4, h5, h6, label {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Arial, sans-serif !important;
+        }
+
+        /* Explicitly preserve Streamlit's Material Icon fonts */
+        [data-testid="stIcon"], .notranslate, [class*="MaterialSymbols"] {
+            font-family: "Material Symbols Outlined", "Material Symbols Rounded", "Material Icons" !important;
+        }
+
+        [data-testid="stAppViewContainer"], .stApp {
+            background-color: var(--sys-bg-primary) !important;
+        }
+
+        [data-testid="stHeader"] {
+            background-color: transparent !important;
+        }
+
+        .block-container {
+            padding-top: 1.5rem !important;
+            padding-bottom: 5rem !important;
+            max-width: 1080px !important;
+        }
+
+        /* Streamlit global column margin alignment */
+        div[data-testid="column"] {
+            gap: 1rem !important;
+        }
+
+        /* Override st.markdown and default texts */
+        h1, h2, h3, h4, h5, h6, p, span, label {
+            color: var(--text-primary);
+        }
+
+        h1 {
+            font-size: 2.2rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.03em !important;
+        }
+
+        h2 {
+            font-size: 1.6rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.02em !important;
+            margin-top: 1.5rem !important;
+            margin-bottom: 0.8rem !important;
+        }
+
+        h3 {
+            font-size: 1.25rem !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.01em !important;
+            margin-top: 1.2rem !important;
+            margin-bottom: 0.6rem !important;
+        }
+
+        /* ============================================================
+           NATIVE STREAMLIT COMPONENT OVERRIDES
+        ============================================================ */
+        /* Standard buttons */
+        .stButton > button {
+            border-radius: 12px !important;
+            font-weight: 600 !important;
+            font-size: 0.92rem !important;
+            min-height: 2.6rem !important;
+            padding: 0.5rem 1.2rem !important;
+            transition: all 0.15s ease !important;
+            border: 1px solid var(--border-input) !important;
+            background-color: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+        }
+        .stButton > button:hover {
+            border-color: var(--accent) !important;
+            background-color: var(--accent-hover-bg) !important;
+            color: var(--accent) !important;
+        }
+        .stButton > button:active {
+            transform: scale(0.98);
+        }
+
+        /* Primary button override */
+        .stButton > button[data-testid="baseButton-primary"] {
+            background-color: var(--accent) !important;
+            border-color: var(--accent) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(10, 122, 255, 0.2) !important;
+        }
+        .stButton > button[data-testid="baseButton-primary"]:hover {
+            background-color: var(--accent-dark) !important;
+            border-color: var(--accent-dark) !important;
+            color: #ffffff !important;
+        }
+
+        /* Forms */
+        div[data-testid="stForm"] {
+            border: 1px solid var(--card-border) !important;
+            border-radius: 20px !important;
+            padding: 2rem !important;
+            background-color: var(--card-bg) !important;
+            box-shadow: var(--card-shadow) !important;
+        }
+
+        /* Input Controls */
+        div[data-baseweb="input"] {
+            border: 1px solid var(--border-input) !important;
+            border-radius: 12px !important;
+            background-color: var(--sys-bg-secondary) !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-baseweb="input"]:focus-within {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 3px var(--accent-bg) !important;
+        }
+        div[data-baseweb="input"] input {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0.5rem 0.8rem !important;
+            color: var(--text-primary) !important;
+            font-size: 0.95rem !important;
+        }
+
+        /* Select boxes */
+        div[data-baseweb="select"] {
+            border-radius: 12px !important;
+            border: 1px solid var(--border-input) !important;
+            background-color: var(--sys-bg-secondary) !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-baseweb="select"]:focus-within {
+            border-color: var(--accent) !important;
+        }
+        div[data-baseweb="select"] > div {
+            background-color: transparent !important;
+            border: none !important;
+        }
+
+        /* Segmented control track */
+        div[data-testid="stSegmentedControl"] {
+            background-color: var(--sys-bg-tertiary) !important;
+            border-radius: 12px !important;
+            padding: 2px !important;
+            gap: 2px !important;
+            display: inline-flex !important;
+            border: none !important;
+            margin: 1rem auto 1.5rem auto !important;
+        }
+        /* Segmented control individual options */
+        div[data-testid="stSegmentedControl"] button {
+            border-radius: 10px !important;
+            border: none !important;
+            background-color: transparent !important;
+            color: var(--text-secondary) !important;
+            font-weight: 550 !important;
+            font-size: 0.9rem !important;
+            padding: 0.4rem 1.1rem !important;
+            min-height: 2.2rem !important;
+            box-shadow: none !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        div[data-testid="stSegmentedControl"] button:hover {
+            color: var(--text-primary) !important;
+            background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+        /* Active selected segment */
+        div[data-testid="stSegmentedControl"] button[data-testid="baseButton-primary"] {
+            background-color: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+            font-weight: 600 !important;
+        }
+
+        /* Metrics */
+        div[data-testid="stMetric"] {
+            background-color: var(--card-bg) !important;
+            border: 1px solid var(--card-border) !important;
+            border-radius: 16px !important;
+            padding: 1rem !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+        }
+        div[data-testid="stMetric"] label {
+            font-size: 0.82rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            color: var(--text-secondary) !important;
+        }
+        div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+            font-size: 1.8rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.02em !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* ============================================================
+           STATUS LABELS (inline text)
+        ============================================================ */
+        .status-ok  {color: var(--status-ok);  font-weight: 600;}
+        .status-warn{color: var(--status-warn); font-weight: 600;}
+        .status-bad {color: var(--status-bad);  font-weight: 600;}
+
+        /* Status badges used in cards */
+        .badge-ok   {background: var(--status-ok-bg);   color: var(--status-ok);  border-radius:999px; padding:.25rem .65rem; font-weight:600; font-size:.78rem; white-space:nowrap;}
+        .badge-warn {background: var(--status-warn-bg); color: var(--status-warn); border-radius:999px; padding:.25rem .65rem; font-weight:600; font-size:.78rem; white-space:nowrap;}
+        .badge-bad  {background: var(--status-bad-bg);  color: var(--status-bad); border-radius:999px; padding:.25rem .65rem; font-weight:600; font-size:.78rem; white-space:nowrap;}
+        .badge-ok-text  {color: var(--status-ok);  font-size:1.15rem; font-weight:700;}
+        .badge-bad-text {color: var(--status-bad); font-size:1.15rem; font-weight:700;}
+
+        /* ============================================================
+           PAGE LABEL
+        ============================================================ */
         .page-label {
-            color: #536171;
+            color: var(--text-label);
             font-size: .95rem;
             margin: -.5rem 0 1.25rem 0;
+            font-weight: 500;
         }
+
+        /* ============================================================
+           POPOVER / MENU BUTTON
+        ============================================================ */
         div[data-testid="stPopover"] {
-            margin-top: 1.8rem;
+            margin-top: 0.5rem !important;
+        }
+        @media (max-width: 760px) {
+            div[data-testid="stPopover"] {
+                margin-top: 1rem !important;
+            }
         }
         div[data-testid="stPopover"] > button {
-            border-radius: 999px;
-            border: 1px solid #d5dce5;
-            background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
-            box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
-            font-weight: 800;
-            min-height: 2.7rem;
+            border-radius: 999px !important;
+            border: 1px solid var(--border-input) !important;
+            background-color: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+            font-weight: 600 !important;
+            min-height: 2.6rem !important;
+            padding: 0.4rem 1rem !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
+            transition: all 0.2s ease !important;
         }
         div[data-testid="stPopover"] > button:hover {
-            border-color: #1f6feb;
-            box-shadow: 0 10px 22px rgba(31, 111, 235, .14);
+            border-color: var(--accent) !important;
+            background-color: var(--accent-hover-bg) !important;
+            color: var(--accent) !important;
+            box-shadow: 0 6px 16px rgba(0, 122, 255, 0.1) !important;
         }
-        .menu-tab-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: .35rem;
-            margin-top: .4rem;
+
+        /* ============================================================
+           MENU NAVIGATION LIST (Grouped List Style)
+        ============================================================ */
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] {
+            padding: 0.25rem 0 !important;
+            gap: 2px !important;
         }
-        .menu-tab-link {
-            display: block;
-            text-decoration: none !important;
-            color: #1f2937 !important;
-            border-radius: 13px;
-            min-height: 2.65rem;
-            line-height: 2.65rem;
-            padding: 0 .85rem;
-            border: 1px solid #d9e0ea;
-            background: #ffffff;
-            font-weight: 780;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, .04);
-            margin-bottom: .35rem;
+        
+        div[data-testid="stPopover"] .stCaption {
+            font-size: 0.78rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            color: var(--text-secondary) !important;
+            margin-top: 0.8rem !important;
+            margin-bottom: 0.3rem !important;
+            padding-left: 0.8rem !important;
         }
-        .menu-tab-link:hover {
-            border-color: #1f6feb;
-            background: #f4f8ff;
-            color: #1d4ed8 !important;
+
+        /* Navigation buttons inside popover list */
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button {
+            width: 100% !important;
+            border: none !important;
+            border-radius: 8px !important;
+            background: transparent !important;
+            color: var(--text-primary) !important;
+            padding: 0.6rem 0.8rem !important;
+            min-height: 2.4rem !important;
+            font-weight: 500 !important;
+            box-shadow: none !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+            transition: background-color 0.15s ease, color 0.15s ease !important;
         }
-        .menu-tab-link-active {
-            background: #eef5ff;
-            border-color: #1f6feb;
-            color: #1d4ed8 !important;
-            box-shadow: inset 0 0 0 1px #1f6feb;
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button:hover {
+            background-color: var(--sys-bg-tertiary) !important;
+            color: var(--accent) !important;
         }
-        div[data-testid="stPopover"] div[data-testid="stHorizontalBlock"] {
-            gap: .45rem;
+        /* Active button in the popover list */
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button[data-testid="baseButton-primary"] {
+            background-color: var(--accent-bg) !important;
+            color: var(--accent) !important;
+            font-weight: 600 !important;
         }
-        div[data-testid="stPopover"] div[data-testid="stButton"] > button {
-            justify-content: flex-start;
-            border-radius: 13px;
-            min-height: 2.65rem;
-            border: 1px solid #d9e0ea;
-            background: #ffffff;
-            font-weight: 780;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, .04);
+        /* Logout button style in popover */
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] > div[data-testid="stButton"]:last-child button {
+            border-top: 1px solid var(--border-light) !important;
+            border-radius: 0 !important;
+            margin-top: 0.5rem !important;
+            padding-top: 0.8rem !important;
+            color: var(--status-bad) !important;
         }
-        div[data-testid="stPopover"] div[data-testid="stButton"] > button:hover {
-            border-color: #1f6feb;
-            background: #f4f8ff;
-            color: #1d4ed8;
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] > div[data-testid="stButton"]:last-child button:hover {
+            background-color: var(--status-bad-bg) !important;
+            color: var(--status-bad) !important;
         }
-        input[placeholder="HB-KDA"],
-        input[placeholder="DA40"],
-        input[placeholder="SEP"],
-        input[placeholder="LFLI"],
-        input[placeholder="HH:MM"] {
-            text-transform: uppercase;
+
+        /* Language flags selector */
+        div[data-testid="stPopover"] div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
+            font-size: 1.2rem !important;
+            min-height: 2.2rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 8px !important;
+            border: 1px solid var(--border-light) !important;
+            background-color: var(--sys-bg-primary) !important;
+        }
+        div[data-testid="stPopover"] div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button[data-testid="baseButton-primary"] {
+            border-color: var(--accent) !important;
+            background-color: var(--accent-bg) !important;
+        }
+
+        /* ============================================================
+           RADIO GROUPS
+        ============================================================ */
+        div[role="radiogroup"] {
+            gap: 0.5rem !important;
+            padding: 4px 0 !important;
         }
         div[role="radiogroup"] label {
-            border: 1px solid #cfd6df;
-            border-radius: 8px;
-            padding: .35rem .65rem;
-            margin: .16rem .12rem;
-            white-space: nowrap;
-            background: #f8fafc;
-            min-width: max-content;
+            border: 1px solid var(--border-input) !important;
+            border-radius: 10px !important;
+            padding: 0.45rem 0.85rem !important;
+            margin: 0 !important;
+            background: var(--card-bg) !important;
+            color: var(--text-secondary) !important;
+            font-weight: 550 !important;
+            font-size: 0.9rem !important;
+            transition: all 0.15s ease !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+        }
+        div[role="radiogroup"] label:hover {
+            border-color: var(--accent) !important;
+            color: var(--text-primary) !important;
         }
         div[role="radiogroup"] label:has(input:checked) {
-            border-color: #1f6feb;
-            background: #eef5ff;
-            box-shadow: inset 0 0 0 1px #1f6feb;
+            border-color: var(--accent) !important;
+            background-color: var(--accent-bg) !important;
+            color: var(--accent) !important;
+            font-weight: 600 !important;
+            box-shadow: 0 0 0 1px var(--accent) !important;
         }
-        div[role="radiogroup"] {
-            gap: .25rem;
+
+        /* ============================================================
+           PYDECK ROUTE MAP INSERT (Apple Grouped Card Style)
+        ============================================================ */
+        div[data-testid="stPydeckChart"] {
+            border-radius: 20px !important;
+            overflow: hidden !important;
+            border: 1px solid var(--card-border) !important;
+            box-shadow: var(--card-shadow) !important;
+            margin: 1.2rem 0 !important;
         }
+
+        /* ============================================================
+           FLIGHT LIST / ROWS (iOS Grouped Style)
+        ============================================================ */
         .flight-list {
-            background: #ffffff;
-            border: 1px solid #e4e8ee;
-            border-radius: 18px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
             overflow: hidden;
-            margin-top: 1rem;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, .06);
+            margin-top: 1.2rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02);
         }
         .flight-row {
             display: grid;
-            grid-template-columns: 74px minmax(120px, 1fr) 90px minmax(120px, 1fr) 86px;
-            gap: .8rem;
+            grid-template-columns: 80px minmax(120px, 1fr) 80px minmax(120px, 1fr) 80px;
+            gap: 1rem;
             align-items: center;
-            padding: 1rem 1.1rem;
-            border-bottom: 1px solid #edf0f4;
+            padding: 1.2rem 1.4rem;
+            border-bottom: 1px solid var(--border-light);
+            transition: background-color 0.15s ease;
+        }
+        .flight-row:hover {
+            background-color: var(--sys-bg-tertiary);
         }
         .flight-row:last-child {border-bottom: 0;}
-        .flight-date {text-align: center; line-height: 1;}
-        .flight-day {font-size: 1.9rem; font-weight: 800;}
-        .flight-month {color: #7a8491; font-weight: 700; letter-spacing: .04em;}
-        .flight-airport {font-size: 1.35rem; font-weight: 800;}
-        .flight-time {color: #202938; font-size: 1.05rem;}
-        .flight-duration {text-align: center; font-size: 1.25rem; color: #202938;}
-        .flight-chip-row {display: flex; gap: .35rem; margin-top: .35rem; flex-wrap: wrap;}
+        
+        .flight-date {
+            text-align: center;
+            line-height: 1.1;
+            background: var(--sys-bg-primary);
+            border-radius: 12px;
+            padding: 0.5rem;
+            border: 1px solid var(--border-light);
+        }
+        .flight-day {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+        .flight-month {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .flight-airport {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+        .flight-time {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .flight-duration {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--accent-bg);
+            color: var(--accent);
+            padding: 0.35rem 0.65rem;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 0 auto;
+        }
+        .flight-chip-row {
+            display: flex;
+            gap: 0.35rem;
+            margin-top: 0.4rem;
+            flex-wrap: wrap;
+        }
         .flight-chip {
             display: inline-flex;
             align-items: center;
-            border-radius: 999px;
-            padding: .12rem .45rem;
-            font-size: .78rem;
-            font-weight: 700;
-            border: 1px solid #d2d8e0;
-            color: #5d6673;
+            border-radius: 6px;
+            padding: 0.15rem 0.4rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            background: var(--sys-bg-primary);
         }
         .flight-chip-primary {
-            background: #5946e8;
-            border-color: #5946e8;
-            color: #fff;
+            background: var(--accent-bg);
+            border-color: var(--accent-border);
+            color: var(--accent);
         }
-        .flight-landings {text-align: right;}
+        .flight-landings {
+            text-align: right;
+        }
         .landing-pill {
             display: inline-flex;
-            border: 1px solid #cfd6df;
-            border-radius: 999px;
-            padding: .15rem .5rem;
-            color: #5d6673;
-            font-weight: 700;
+            align-items: center;
+            justify-content: center;
+            background: var(--sys-bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.95rem;
         }
+
+        /* ============================================================
+           HOME STAT CARDS
+        ============================================================ */
         .home-stats {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: .9rem;
-            margin: .7rem 0 1rem;
+            gap: 1.2rem;
+            margin: 1rem 0 1.5rem;
         }
         .home-stat {
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            padding: 1rem;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-            box-shadow: 0 10px 24px rgba(15, 23, 42, .055);
+            border: 1px solid var(--card-border) !important;
+            border-radius: 18px !important;
+            padding: 1.2rem !important;
+            background: var(--card-bg) !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02) !important;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .home-stat-icon {font-size: 1.35rem; line-height: 1;}
-        .home-stat-value {font-size: 2rem; font-weight: 850; margin-top: .35rem; color: #111827;}
-        .home-stat-label {color: #5f6b7a; font-weight: 700;}
+        .home-stat:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06) !important;
+        }
+        .home-stat-icon {
+            font-size: 1.5rem;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+        .home-stat-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            font-feature-settings: "tnum" 1;
+            margin-top: 0.25rem;
+            color: var(--text-primary);
+        }
+        .home-stat-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* ============================================================
+           HOME STATUS PANELS (iOS Settings Grouped Style)
+        ============================================================ */
         .home-status-panel {
-            border-radius: 8px;
-            padding: 1rem;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            margin: 1rem 0 1.2rem;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, .055);
+            border-radius: 20px;
+            padding: 1.4rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            margin: 1.2rem 0;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02);
         }
-        .home-status-panel-passenger {margin-top: -.45rem;}
         .home-status-heading {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             gap: 1rem;
-            margin-bottom: .8rem;
+            margin-bottom: 1rem;
         }
-        .home-status-title {font-size: 1.25rem; font-weight: 800;}
-        .home-status-subtitle {color: #64748b; font-weight: 650; margin-top: .1rem;}
-        .home-status-current {font-size: 1.15rem; font-weight: 850;}
+        .home-status-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+        .home-status-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 0.15rem;
+        }
+        .home-status-current {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
         .home-status-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-            gap: .65rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.8rem;
         }
         .home-status-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: .75rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: .8rem;
-            background: #f8fafc;
-            min-height: 5rem;
+            gap: 0.75rem;
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 1rem;
+            background: var(--sys-bg-primary);
+            min-height: 4.8rem;
         }
-        .home-status-label {font-weight: 820; color: #111827;}
-        .home-status-detail {color: #64748b; font-weight: 650; margin-top: .12rem;}
-        .home-status-badge {
-            border-radius: 999px;
-            padding: .22rem .55rem;
-            font-weight: 850;
-            font-size: .78rem;
-            white-space: nowrap;
+        .home-status-label {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
         }
+        .home-status-detail {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            font-weight: 500;
+            margin-top: 0.12rem;
+        }
+
+        /* ============================================================
+           INFO / DEADLINE CARDS
+        ============================================================ */
         .card-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-            gap: .75rem;
-            margin: .8rem 0 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
         }
         .info-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: .95rem;
-            background: #ffffff;
-            box-shadow: 0 8px 20px rgba(15, 23, 42, .045);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            padding: 1.2rem;
+            background: var(--card-bg);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .info-title {font-size: 1.1rem; font-weight: 850; color: #111827;}
-        .info-sub {color: #64748b; margin-top: .15rem;}
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        }
+        .info-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .info-sub {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
         .info-pill {
             display: inline-flex;
-            border-radius: 999px;
-            padding: .16rem .55rem;
-            margin-top: .45rem;
-            background: #eef5ff;
-            color: #1d4ed8;
-            font-weight: 800;
-            font-size: .78rem;
+            border-radius: 8px;
+            padding: 0.2rem 0.55rem;
+            margin-top: 0.6rem;
+            background: var(--accent-bg);
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.78rem;
         }
+
+        /* ============================================================
+           AIRCRAFT CARDS
+        ============================================================ */
         .aircraft-card {
             display: grid;
-            grid-template-columns: 96px 1fr;
-            gap: .9rem;
+            grid-template-columns: 100px 1fr;
+            gap: 1.1rem;
             align-items: center;
         }
         .aircraft-photo {
-            width: 96px;
-            height: 72px;
-            border-radius: 12px;
+            width: 100px;
+            height: 75px;
+            border-radius: 14px;
             object-fit: cover;
-            background: #eef2f7;
-            border: 1px solid #dbe3ec;
+            background: var(--sys-bg-primary);
+            border: 1px solid var(--border-light);
         }
         .aircraft-photo-placeholder {
-            width: 96px;
-            height: 72px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #e0f2fe, #eef2ff);
-            border: 1px solid #dbe3ec;
+            width: 100px;
+            height: 75px;
+            border-radius: 14px;
+            background: var(--aircraft-ph-bg);
+            border: 1px solid var(--aircraft-ph-border);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #2563eb;
-            font-weight: 900;
-            font-size: 1.7rem;
+            color: var(--aircraft-ph-color);
+            font-weight: 700;
+            font-size: 1.8rem;
         }
+
+        /* ============================================================
+           LOGIN HERO
+        ============================================================ */
+        .login-hero {
+            text-align: center;
+            margin-top: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .login-hero-title {
+            margin-top: 0.6rem;
+            margin-bottom: 0.2rem;
+            font-size: 2.5rem !important;
+            font-weight: 800 !important;
+            letter-spacing: -0.04em !important;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--indigo) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .login-hero-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.15rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+        }
+
+        /* ============================================================
+           DEMO INTRO BOX
+        ============================================================ */
+        .demo-intro-box {
+            background: var(--demo-box-bg);
+            border: 1px solid var(--demo-box-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.01);
+        }
+        .demo-intro-text {
+            margin: 0;
+            color: var(--text-secondary);
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+           ACCOUNT PROFILE CARD
+        ============================================================ */
+        .profile-card {
+            background: var(--profile-bg);
+            border: 1px solid var(--profile-border);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.02);
+        }
+        .profile-card-inner {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--indigo) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 700;
+            box-shadow: 0 8px 16px rgba(10, 132, 255, 0.15);
+        }
+        .profile-username {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .profile-email {
+            margin: 0.1rem 0 0 0;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+        ============================================================ */
         @media (max-width: 760px) {
-            .block-container {padding-left: .8rem; padding-right: .8rem;}
+            .block-container {padding-left: .8rem !important; padding-right: .8rem !important;}
             div[data-testid="column"] {width: 100% !important; flex: 1 1 100% !important;}
             .flight-row {
                 grid-template-columns: 56px 1fr;
@@ -501,7 +1118,9 @@ def page_setup() -> None:
 
 def render_navigation() -> str:
     st.session_state.setdefault("language", "en")
-    st.session_state.setdefault("current_page", "logbook")
+    st.session_state.setdefault("current_page", "home")
+    
+
     requested_page = st.query_params.get("page")
     if isinstance(requested_page, list):
         requested_page = requested_page[0] if requested_page else None
@@ -529,33 +1148,47 @@ def render_navigation() -> str:
         st.session_state.current_page = "home"
     language = st.session_state.language
 
-    spacer_col, button_col, title_col = st.columns([0.15, 1.55, 4])
-    with button_col.popover(tr(language, "menu")):
+    title_col, button_col = st.columns([4.2, 1.8])
+    title_col.title(tr(language, "app_title"))
+    with button_col.popover(tr(language, "menu"), key=f"menu_popover_{st.session_state.current_page}", use_container_width=True):
         st.caption(tr(language, "language"))
-        lang_col_1, lang_col_2 = st.columns(2)
-        if lang_col_1.button("🇬🇧", key="lang_en", width="stretch", type="primary" if language == "en" else "secondary"):
+        lang_row1 = st.columns(3)
+        if lang_row1[0].button("🇬🇧", key="lang_en", use_container_width=True, type="primary" if language == "en" else "secondary"):
             st.session_state.language = "en"
             st.rerun()
-        if lang_col_2.button("🇫🇷", key="lang_fr", width="stretch", type="primary" if language == "fr" else "secondary"):
+        if lang_row1[1].button("🇫🇷", key="lang_fr", use_container_width=True, type="primary" if language == "fr" else "secondary"):
             st.session_state.language = "fr"
+            st.rerun()
+        if lang_row1[2].button("🇩🇪", key="lang_de", use_container_width=True, type="primary" if language == "de" else "secondary"):
+            st.session_state.language = "de"
+            st.rerun()
+        lang_row2 = st.columns(3)
+        if lang_row2[0].button("🇮🇹", key="lang_it", use_container_width=True, type="primary" if language == "it" else "secondary"):
+            st.session_state.language = "it"
+            st.rerun()
+        if lang_row2[1].button("🇪🇸", key="lang_es", use_container_width=True, type="primary" if language == "es" else "secondary"):
+            st.session_state.language = "es"
             st.rerun()
         language = st.session_state.language
         st.caption(tr(language, "select_page"))
 
-        menu_links = []
-        current_account = get_current_user_id()
         for page_key in PAGE_KEYS:
             page_label = tr(language, page_key)
             is_current_page = page_key == st.session_state.current_page
-            css_class = "menu-tab-link menu-tab-link-active" if is_current_page else "menu-tab-link"
             label_prefix = "✓ " if is_current_page else ""
-            href = "?" + urlencode({"page": page_key, "account": current_account})
-            menu_links.append(
-                f'<a class="{css_class}" href="{html.escape(href)}" target="_self">'
-                f'{html.escape(label_prefix + page_label)}</a>'
-            )
-        st.markdown("".join(menu_links), unsafe_allow_html=True)
-    title_col.title(tr(language, "app_title"))
+            if st.button(
+                label_prefix + page_label,
+                key=f"nav_{page_key}",
+                use_container_width=True,
+                type="primary" if is_current_page else "secondary"
+            ):
+                st.session_state.current_page = page_key
+                st.query_params["page"] = page_key
+                st.rerun()
+        st.write("")
+        if st.button(tr(language, "logout"), key="menu_logout", use_container_width=True):
+            logout()
+            st.rerun()
 
     return st.session_state.current_page
 
@@ -661,14 +1294,267 @@ def flight_role(flight: dict) -> str:
     return "TIME"
 
 
-def render_flight_cards(flights: list[dict]) -> None:
+def render_single_flight_map(flight: dict) -> None:
+    routes = route_rows([flight])
+    points = airport_rows([flight])
+
+    if routes and not points.empty:
+        segments = []
+        for r in routes:
+            path = r["path"]
+            for i in range(len(path) - 1):
+                segments.append({
+                    "from": r["from"],
+                    "to": r["to"],
+                    "date": r["date"],
+                    "source": path[i],
+                    "target": path[i+1]
+                })
+
+        line_layer = pdk.Layer(
+            "GreatCircleLayer",
+            segments,
+            get_source_position="source",
+            get_target_position="target",
+            get_color=[0, 122, 255, 160],
+            get_width=2.5,
+            width_min_pixels=2.5,
+            pickable=True
+        )
+
+        point_layer = pdk.Layer(
+            "ScatterplotLayer",
+            points,
+            get_position="[lon, lat]",
+            filled=True,
+            stroked=True,
+            get_fill_color=[255, 255, 255],
+            get_line_color=[0, 122, 255],
+            get_line_width=2,
+            line_width_min_pixels=1.5,
+            get_radius=5.5,
+            radius_units="'pixels'",
+            pickable=True
+        )
+
+        label_layer = pdk.Layer(
+            "TextLayer",
+            points,
+            get_position="[lon, lat]",
+            get_text="code",
+            get_size=12,
+            get_color=[0, 122, 255],
+            font_family="'SF Pro Text', '-apple-system', sans-serif",
+            font_weight=700,
+            get_pixel_offset=[0, -10],
+            get_alignment_baseline="'bottom'",
+            outline_width=2.5,
+            outline_color=[255, 255, 255],
+            pickable=False
+        )
+
+        min_lat = float(points["lat"].min())
+        max_lat = float(points["lat"].max())
+        min_lon = float(points["lon"].min())
+        max_lon = float(points["lon"].max())
+
+        center_lat = (min_lat + max_lat) / 2.0
+        center_lon = (min_lon + max_lon) / 2.0
+
+        lat_span = max_lat - min_lat
+        lon_span = max_lon - min_lon
+        max_span = max(lat_span, lon_span)
+
+        if max_span < 0.001:
+            zoom = 11.0
+        else:
+            import math
+            zoom = float(max(1.0, min(14.0, 8.5 - math.log2(max_span))))
+
+        deck = pdk.Deck(
+            layers=[line_layer, point_layer, label_layer],
+            initial_view_state=pdk.ViewState(latitude=center_lat, longitude=center_lon, zoom=zoom, pitch=0),
+            tooltip={"text": "{from} → {to}\n{date}"},
+        )
+        st.pydeck_chart(deck, width="stretch")
+    else:
+        language = st.session_state.language
+        st.info(tr(language, "add_known_airports_map"))
+
+
+def render_flight_detail_card(flight: dict, profiles: dict) -> None:
+    language = st.session_state.language
+    
+    st.markdown(
+        """
+        <style>
+        .detail-card-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+        }
+        .detail-route {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.03em;
+        }
+        .detail-date {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .detail-item {
+            background: var(--sys-bg-primary);
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-light);
+        }
+        .detail-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+        .detail-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .detail-remarks {
+            background: var(--sys-bg-primary);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-light);
+            margin-top: 1rem;
+            font-style: italic;
+            color: var(--text-primary);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    reg = flight.get("aircraft_registration", "Unknown")
+    profile = profiles.get(reg, {}) if profiles else {}
+    ac_type = profile.get("type", "Unknown")
+    
+    pic_min = int(flight.get("pic_minutes", 0))
+    dual_min = int(flight.get("dual_minutes", 0))
+    night_min = int(flight.get("night_minutes", 0))
+    total_min = pic_min + dual_min
+    
+    f_date = flight.get("date", "")
+    
+    st.markdown('<div class="detail-card-container">', unsafe_allow_html=True)
+    
+    col_title, col_close = st.columns([5, 1.2])
+    with col_title:
+        st.markdown(
+            f"""
+            <div class="detail-route">
+                {html.escape(flight.get('departure', ''))} ➔ {html.escape(flight.get('arrival', ''))}
+            </div>
+            <div class="detail-date">{html.escape(f_date)}</div>
+            """,
+            unsafe_allow_html=True
+        )
+    with col_close:
+        if st.button("✕ " + tr(language, "close"), key="close_detail_card", use_container_width=True):
+            st.session_state.selected_flight_index = None
+            st.rerun()
+            
+    st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
+    
+    col_details, col_map = st.columns([3, 3])
+    
+    with col_details:
+        st.markdown(
+            f"""
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">{html.escape(tr(language, "aircraft"))}</div>
+                    <div class="detail-value">{html.escape(reg)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">{html.escape(tr(language, "aircraft_profile"))}</div>
+                    <div class="detail-value">{html.escape(ac_type)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">{html.escape(tr(language, "total_time"))}</div>
+                    <div class="detail-value">{html.escape(format_duration(total_min))}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">{html.escape(tr(language, "time_role"))}</div>
+                    <div class="detail-value">{"PIC" if pic_min > 0 else "Dual (DC)"}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">{html.escape(tr(language, "landings"))}</div>
+                    <div class="detail-value">{int(flight.get("landings", 0))}</div>
+                </div>
+                {"".join(f'''<div class="detail-item">
+                    <div class="detail-label">{html.escape(tr(language, "night_time"))}</div>
+                    <div class="detail-value">{html.escape(format_duration(night_min))}</div>
+                </div>''' if night_min > 0 else "")}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        dep_utc = flight.get("departure_utc", "")
+        arr_utc = flight.get("arrival_utc", "")
+        if dep_utc or arr_utc:
+            st.markdown(
+                f"""
+                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.5rem; font-weight: 500;">
+                    ⏱ {html.escape(tr(language, "utc_time"))}: {html.escape(dep_utc or "--:--")} UTC ➔ {html.escape(arr_utc or "--:--")} UTC
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
+        remarks = flight.get("remarks", "").strip()
+        if remarks:
+            st.markdown(
+                f"""
+                <div class="detail-remarks">
+                    <strong>{html.escape(tr(language, "remarks"))}:</strong> "{html.escape(remarks)}"
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
+    with col_map:
+        render_single_flight_map(flight)
+        
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_flight_cards(flights: list[dict], profiles: dict = None) -> None:
     if not flights:
         language = st.session_state.language
         st.info(tr(language, "no_flights"))
         return
 
-    rows = []
-    for flight in sorted(flights, key=lambda item: item.get("date", ""), reverse=True):
+    # Check if a flight is selected
+    selected_idx = st.session_state.get("selected_flight_index")
+    if selected_idx is not None and 0 <= selected_idx < len(flights):
+        render_flight_detail_card(flights[selected_idx], profiles)
+
+    indexed_flights = sorted(enumerate(flights), key=lambda x: x[1].get("date", ""), reverse=True)
+    
+    for index, flight in indexed_flights:
         day, month = flight_day_month(flight.get("date", ""))
         total_minutes = int(flight.get("pic_minutes", 0)) + int(flight.get("dual_minutes", 0))
         departure = html.escape(flight.get("departure", ""))
@@ -677,9 +1563,11 @@ def render_flight_cards(flights: list[dict]) -> None:
         sector = html.escape(flight.get("sector_index") and f"{flight.get('sector_index')}/{flight.get('sector_count')}" or "")
         xc_chip = '<span class="flight-chip">XC</span>' if departure != arrival else ""
         sector_chip = f'<span class="flight-chip">S{sector}</span>' if sector else ""
-        rows.append(
-            f"""
-            <div class="flight-row">
+        
+        # Create individual card HTML wrapping it in a single list card wrapper
+        row_html = f"""
+        <div class="flight-list" style="margin-top: 0; margin-bottom: 0.5rem; border-radius: 12px;">
+            <div class="flight-row" style="border-bottom: 0;">
                 <div class="flight-date">
                     <div class="flight-day">{html.escape(day)}</div>
                     <div class="flight-month">{html.escape(month)}</div>
@@ -700,9 +1588,17 @@ def render_flight_cards(flights: list[dict]) -> None:
                     <span class="landing-pill">{int(flight.get("landings", 0))}</span>
                 </div>
             </div>
-            """
-        )
-    st.html('<div class="flight-list">' + "".join(rows) + "</div>")
+        </div>
+        """
+        
+        col_card, col_btn = st.columns([5.2, 0.8])
+        with col_card:
+            st.html(row_html)
+        with col_btn:
+            st.markdown('<div style="margin-top: 1.15rem;"></div>', unsafe_allow_html=True)
+            if st.button("🗺️", key=f"view_flight_btn_{index}", use_container_width=True):
+                st.session_state.selected_flight_index = index
+                st.rerun()
 
 
 def render_deadline_cards(deadlines: list[dict]) -> None:
@@ -713,13 +1609,18 @@ def render_deadline_cards(deadlines: list[dict]) -> None:
     cards = []
     for deadline in sorted(deadlines, key=lambda item: deadline_status(item)[0]):
         days_left, status = deadline_status(deadline)
-        color = "#22c55e" if status == "OK" else "#f59e0b" if days_left >= 0 else "#ef4444"
+        if status == "OK":
+            badge_class = "badge-ok"
+        elif days_left >= 0:
+            badge_class = "badge-warn"
+        else:
+            badge_class = "badge-bad"
         cards.append(
             f"""
             <div class="info-card">
                 <div class="info-title">{html.escape(deadline.get("name", ""))}</div>
                 <div class="info-sub">{html.escape(deadline.get("category", ""))} · {html.escape(deadline.get("expires", ""))}</div>
-                <span class="info-pill" style="background:{color}1f;color:{color};">{html.escape(status)} · {days_left} days</span>
+                <span class="{badge_class}" style="display:inline-flex;margin-top:.45rem;">{html.escape(status)} · {days_left} days</span>
                 <div class="info-sub">{html.escape(deadline.get("notes", ""))}</div>
             </div>
             """
@@ -777,22 +1678,22 @@ def render_home_stat_cards(language: str, flights: list[dict], total_minutes: in
     html_block = f"""
     <div class="home-stats">
         <div class="home-stat">
-            <div class="home-stat-icon">↘</div>
+            <div class="home-stat-icon">🛬</div>
             <div class="home-stat-value">{landings}</div>
             <div class="home-stat-label">{html.escape(tr(language, "landings"))}</div>
         </div>
         <div class="home-stat">
-            <div class="home-stat-icon">◴</div>
+            <div class="home-stat-icon">⏱️</div>
             <div class="home-stat-value">{html.escape(compact_duration(total_minutes))}</div>
             <div class="home-stat-label">{html.escape(tr(language, "total_time"))}</div>
         </div>
         <div class="home-stat">
-            <div class="home-stat-icon">◎</div>
+            <div class="home-stat-icon">📍</div>
             <div class="home-stat-value">{airports}</div>
             <div class="home-stat-label">{html.escape(tr(language, "airports"))}</div>
         </div>
         <div class="home-stat">
-            <div class="home-stat-icon">✈</div>
+            <div class="home-stat-icon">📖</div>
             <div class="home-stat-value">{len(flights)}</div>
             <div class="home-stat-label">{html.escape(tr(language, "total_flights"))}</div>
         </div>
@@ -802,7 +1703,7 @@ def render_home_stat_cards(language: str, flights: list[dict], total_minutes: in
 
 
 def status_row(language: str, label_key: str, value: str, ok: bool) -> str:
-    color = "#16a34a" if ok else "#dc2626"
+    badge_class = "badge-ok" if ok else "badge-bad"
     symbol = "OK" if ok else "!"
     return f"""
         <div class="home-status-row">
@@ -810,7 +1711,7 @@ def status_row(language: str, label_key: str, value: str, ok: bool) -> str:
                 <div class="home-status-label">{html.escape(tr(language, label_key))}</div>
                 <div class="home-status-detail">{html.escape(value)}</div>
             </div>
-            <span class="home-status-badge" style="background:{color}1f;color:{color};">{symbol}</span>
+            <span class="home-status-badge {badge_class}">{symbol}</span>
         </div>
     """
 
@@ -818,7 +1719,7 @@ def status_row(language: str, label_key: str, value: str, ok: bool) -> str:
 def render_home_status(language: str, flights: list[dict], currency_rules: list[dict]) -> None:
     experience = recent_experience_status(flights)
     status_label = tr(language, "current") if experience["ok"] else tr(language, "not_current")
-    status_color = "#16a34a" if experience["ok"] else "#dc2626"
+    current_class = "badge-ok-text" if experience["ok"] else "badge-bad-text"
     experience_rows = [
         status_row(
             language,
@@ -847,9 +1748,9 @@ def render_home_status(language: str, flights: list[dict], currency_rules: list[
                     <div class="home-status-title">{html.escape(tr(language, "status"))}</div>
                     <div class="home-status-subtitle">{html.escape(tr(language, "last_12_months"))}</div>
                 </div>
-                <div class="home-status-current" style="color:{status_color};">{html.escape(status_label)}</div>
+                <div class="home-status-current {current_class}">{html.escape(status_label)}</div>
             </div>
-            <div class="home-status-grid">{"".join(experience_rows)}</div>
+            <div class="home-status-grid">{chr(10).join(experience_rows)}</div>
         </div>
         """
     )
@@ -860,7 +1761,7 @@ def render_home_status(language: str, flights: list[dict], currency_rules: list[
     passenger_cards = []
     for status in statuses:
         ok = bool(status["ok"])
-        color = "#16a34a" if ok else "#dc2626"
+        badge_class = "badge-ok" if ok else "badge-bad"
         label = tr(language, "can_carry_pax") if ok else tr(language, "not_current")
         missing = ""
         if not ok:
@@ -874,7 +1775,7 @@ def render_home_status(language: str, flights: list[dict], currency_rules: list[
                     <div class="home-status-detail">{status["landings"]} / {status["required_landings"]} {html.escape(tr(language, "landings").lower())}</div>
                     {missing}
                 </div>
-                <span class="home-status-badge" style="background:{color}1f;color:{color};">{html.escape(label)}</span>
+                <span class="home-status-badge {badge_class}">{html.escape(label)}</span>
             </div>
             """
         )
@@ -900,13 +1801,81 @@ def render_route_map(data: dict, title: str | None = None) -> None:
     points = airport_rows(data["flights"])
 
     if routes and not points.empty:
-        line_layer = pdk.Layer("PathLayer", routes, get_path="path", get_color=[32, 112, 186], width_min_pixels=4, pickable=True)
-        point_layer = pdk.Layer("ScatterplotLayer", points, get_position="[lon, lat]", get_fill_color=[241, 91, 76], get_radius=4500, pickable=True)
-        label_layer = pdk.Layer("TextLayer", points, get_position="[lon, lat]", get_text="code", get_size=14, get_color=[20, 24, 31], get_alignment_baseline="'bottom'")
-        midpoint = points[["lat", "lon"]].mean()
+        segments = []
+        for r in routes:
+            path = r["path"]
+            for i in range(len(path) - 1):
+                segments.append({
+                    "from": r["from"],
+                    "to": r["to"],
+                    "date": r["date"],
+                    "source": path[i],
+                    "target": path[i+1]
+                })
+
+        line_layer = pdk.Layer(
+            "GreatCircleLayer",
+            segments,
+            get_source_position="source",
+            get_target_position="target",
+            get_color=[0, 122, 255, 160],
+            get_width=2.5,
+            width_min_pixels=2.5,
+            pickable=True
+        )
+
+        point_layer = pdk.Layer(
+            "ScatterplotLayer",
+            points,
+            get_position="[lon, lat]",
+            filled=True,
+            stroked=True,
+            get_fill_color=[255, 255, 255],
+            get_line_color=[0, 122, 255],
+            get_line_width=2,
+            line_width_min_pixels=1.5,
+            get_radius=5.5,
+            radius_units="'pixels'",
+            pickable=True
+        )
+
+        label_layer = pdk.Layer(
+            "TextLayer",
+            points,
+            get_position="[lon, lat]",
+            get_text="code",
+            get_size=12,
+            get_color=[0, 122, 255],
+            font_family="'SF Pro Text', '-apple-system', sans-serif",
+            font_weight=700,
+            get_pixel_offset=[0, -10],
+            get_alignment_baseline="'bottom'",
+            outline_width=2.5,
+            outline_color=[255, 255, 255],
+            pickable=False
+        )
+
+        min_lat = float(points["lat"].min())
+        max_lat = float(points["lat"].max())
+        min_lon = float(points["lon"].min())
+        max_lon = float(points["lon"].max())
+
+        center_lat = (min_lat + max_lat) / 2.0
+        center_lon = (min_lon + max_lon) / 2.0
+
+        lat_span = max_lat - min_lat
+        lon_span = max_lon - min_lon
+        max_span = max(lat_span, lon_span)
+
+        if max_span < 0.001:
+            zoom = 11.0
+        else:
+            import math
+            zoom = float(max(1.0, min(14.0, 8.5 - math.log2(max_span))))
+
         deck = pdk.Deck(
             layers=[line_layer, point_layer, label_layer],
-            initial_view_state=pdk.ViewState(latitude=float(midpoint["lat"]), longitude=float(midpoint["lon"]), zoom=5.3, pitch=0),
+            initial_view_state=pdk.ViewState(latitude=center_lat, longitude=center_lon, zoom=zoom, pitch=0),
             tooltip={"text": "{from} → {to}\n{date}"},
         )
         st.pydeck_chart(deck, width="stretch")
@@ -933,7 +1902,7 @@ def render_home(data: dict) -> None:
     detail_c.metric(tr(language, "night_time_stat"), format_duration(night_minutes))
     render_route_map(data, tr(language, "route_map"))
     st.subheader(tr(language, "recent"))
-    render_flight_cards(flights)
+    render_flight_cards(flights, data.get("aircraft_profiles", {}))
 
 
 def render_logbook(data: dict) -> None:
@@ -1049,7 +2018,7 @@ def render_logbook(data: dict) -> None:
     if not flights:
         st.info(tr(language, "no_flights"))
     else:
-        render_flight_cards(flights)
+        render_flight_cards(flights, profiles)
         with st.expander(tr(language, "delete_logbook_entries")):
             delete_options = list(range(len(flights)))
             selected_for_delete = st.multiselect(
@@ -1505,59 +2474,73 @@ def render_account(data: dict, all_data: dict) -> None:
     account = all_data.get("accounts", {}).get(current_user_id, {})
     username = account.get("username", current_user_id)
     email = account.get("email", current_user_id)
+    language = st.session_state.language
 
-    st.subheader("Account")
-    st.caption("Local login for this prototype. Passwords are only for separating local demo accounts on this machine.")
+    st.subheader(tr(language, "account"))
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Current user", username)
-    col2.metric("Flights", len(data.get("flights", [])))
-    col3.metric("Aircraft", len(data.get("aircraft_profiles", {})))
-    st.caption(f"Email: {email}")
+    st.html(
+        f"""
+        <div class="profile-card">
+            <div class="profile-card-inner">
+                <div class="profile-avatar">
+                    {username[0].upper() if username else "P"}
+                </div>
+                <div>
+                    <h2 class="profile-username">{html.escape(username)}</h2>
+                    <p class="profile-email">{html.escape(email)}</p>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(tr(language, "total_flights"), len(data.get("flights", [])))
+    with col2:
+        st.metric(tr(language, "aircraft"), len(data.get("aircraft_profiles", {})))
 
     st.divider()
-    st.write("Log in")
-    with st.form("account_login_form"):
-        login = st.text_input("Email or username", placeholder="demo")
-        password = st.text_input("Password", type="password", placeholder="demo")
-        login_col, demo_col = st.columns(2)
-        submitted = login_col.form_submit_button("Log in", type="primary", width="stretch")
-        demo_submitted = demo_col.form_submit_button("Use demo account", width="stretch")
-        if submitted or demo_submitted:
-            login_value = "demo" if demo_submitted else login
-            password_value = "demo" if demo_submitted else password
-            logged_in = authenticate_account(all_data, login_value, password_value)
-            if logged_in:
-                set_active_account(logged_in["user_id"])
-                get_user_data(all_data, logged_in["user_id"])
+
+    if st.button(tr(language, "logout"), key="account_page_logout", type="primary", use_container_width=True):
+        logout()
+        st.rerun()
+
+    st.divider()
+    st.write(tr(language, "account_backup"))
+    st.download_button(
+        tr(language, "download_account_backup"),
+        data=json.dumps(data, indent=2),
+        file_name=f"pilot_logbook_backup_{current_user_id.replace('@', '_at_')}.json",
+        mime="application/json",
+        use_container_width=True,
+    )
+
+    uploaded = st.file_uploader(tr(language, "restore_account_backup"), type=["json"], key="account_restore")
+    if uploaded is not None:
+        try:
+            restored = json.loads(uploaded.getvalue().decode("utf-8"))
+            if "flights" in restored and "deadlines" in restored:
+                data.clear()
+                data.update(restored)
+                from storage import migrate_data
+                migrate_data(data)
                 save_data(all_data)
-                st.success(f"Logged in as {logged_in.get('username', logged_in['user_id'])}.")
+                st.success(tr(language, "account_backup_restored_short"))
                 st.rerun()
             else:
-                st.error("Email/username and password do not match.")
+                st.error(tr(language, "invalid_backup"))
+        except Exception:
+            st.error(tr(language, "invalid_backup"))
 
     st.divider()
-    st.write("Create account")
-    with st.form("account_create_form"):
-        new_col_1, new_col_2 = st.columns(2)
-        new_email = new_col_1.text_input("Email", placeholder="arthur@example.com")
-        new_username = new_col_2.text_input("Username", placeholder="arthur")
-        new_password = st.text_input("Password", type="password")
-        if st.form_submit_button("Create account", width="stretch"):
-            ok, message, user_id = create_account(all_data, new_email, new_username, new_password)
-            if ok and user_id:
-                set_active_account(user_id)
-                save_data(all_data)
-                st.success(message)
-                st.rerun()
-            else:
-                st.error(message)
-
-    st.divider()
-    st.write("Known local accounts")
+    st.write(tr(language, "switch_account"))
+    
     account_rows = []
     for saved_account in sorted(all_data.get("accounts", {}).values(), key=lambda item: item.get("username", "")):
         saved_user_id = saved_account.get("user_id", "")
+        if saved_user_id == current_user_id:
+            continue
         account_rows.append(
             {
                 "Username": saved_account.get("username", saved_user_id),
@@ -1566,57 +2549,38 @@ def render_account(data: dict, all_data: dict) -> None:
             }
         )
     if account_rows:
-        st.dataframe(pd.DataFrame(account_rows), width="stretch", hide_index=True)
+        st.dataframe(pd.DataFrame(account_rows), use_container_width=True, hide_index=True)
+    else:
+        st.caption("No other accounts registered on this machine.")
 
     legacy_account = find_account(all_data, "legacy@local")
-    if legacy_account and st.button("Use legacy account", width="stretch"):
-        set_active_account(legacy_account["user_id"])
-        get_user_data(all_data, legacy_account["user_id"])
-        save_data(all_data)
-        st.rerun()
-
-    if account and not account.get("password_hash"):
-        st.info("This migrated account does not have a password yet. Create a new account when you want a password-protected local profile.")
-
-    st.divider()
-    st.write("Account backup")
-    st.download_button(
-        "Download this account backup",
-        data=json.dumps(data, indent=2),
-        file_name=f"pilot_logbook_backup_{current_user_id.replace('@', '_at_')}.json",
-        mime="application/json",
-        width="stretch",
-    )
-
-    uploaded = st.file_uploader("Restore this account from JSON backup", type=["json"], key="account_restore")
-    if uploaded is not None:
-        restored = json.loads(uploaded.getvalue().decode("utf-8"))
-        if "flights" in restored and "deadlines" in restored:
-            data.clear()
-            data.update(restored)
+    if legacy_account and legacy_account["user_id"] != current_user_id:
+        if st.button(tr(language, "use_legacy_account"), use_container_width=True):
+            set_active_account(legacy_account["user_id"])
+            get_user_data(all_data, legacy_account["user_id"])
             save_data(all_data)
-            st.success("This account backup was restored.")
             st.rerun()
-        else:
-            st.error("That backup does not look like a pilot logbook file.")
 
 
 
 page_setup()
 all_data = load_data()
-if ensure_app_accounts(all_data):
-    save_data(all_data)
-current_user_id = get_current_user_id()
-data = get_user_data(all_data, current_user_id)
-current_page = render_navigation()
+initialize_session(all_data)
 
-if current_page == "home":
-    render_home(data)
-elif current_page == "logbook":
-    render_logbook(data)
-elif current_page == "currency":
-    render_currency(data)
-elif current_page == "data":
-    render_data(data)
-elif current_page == "account":
-    render_account(data, all_data)
+current_user_id = get_current_user_id()
+if current_user_id is None:
+    render_login_page(all_data)
+else:
+    data = get_user_data(all_data, current_user_id)
+    current_page = render_navigation()
+
+    if current_page == "home":
+        render_home(data)
+    elif current_page == "logbook":
+        render_logbook(data)
+    elif current_page == "currency":
+        render_currency(data)
+    elif current_page == "data":
+        render_data(data)
+    elif current_page == "account":
+        render_account(data, all_data)

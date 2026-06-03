@@ -1,0 +1,1293 @@
+        /* ============================================================
+           APPLE HIG DESIGN TOKENS — light mode defaults
+        ============================================================ */
+        :root {
+            /* System backgrounds */
+            --sys-bg-primary:    #f2f2f7;
+            --sys-bg-secondary:  #ffffff;
+            --sys-bg-tertiary:   #e5e5ea;
+            --sys-bg-grouped:    #f2f2f7;
+            --sys-bg-gradient:   linear-gradient(180deg, #a5d3ff 0%, #f2f2f7 320px);
+
+            /* Cards / surfaces */
+            --card-bg:           #ffffff;
+            --card-bg-alt:       #f2f2f7;
+            --card-gradient:     none;
+            --card-border:       rgba(0, 0, 0, 0.06);
+            --card-shadow:       0 8px 24px rgba(0, 0, 0, 0.04);
+
+            /* Text */
+            --text-primary:      #000000;
+            --text-secondary:    #3c3c4399; /* 60% opacity */
+            --text-tertiary:     #3c3c434d; /* 30% opacity */
+            --text-label:        #3c3c4399;
+
+            /* Borders / separators */
+            --border-color:      rgba(0, 0, 0, 0.08);
+            --border-light:      rgba(0, 0, 0, 0.04);
+            --border-input:      rgba(0, 0, 0, 0.12);
+            --border-radio:      rgba(0, 0, 0, 0.15);
+
+            /* Accent — Apple blue */
+            --accent:            #007aff;
+            --accent-dark:       #0056b3;
+            --accent-bg:         rgba(0, 122, 255, 0.1);
+            --accent-hover-bg:   rgba(0, 122, 255, 0.05);
+            --accent-border:     rgba(0, 122, 255, 0.2);
+
+            /* Secondary accent — indigo */
+            --indigo:            #5856d6;
+
+            /* Popover button */
+            --popover-btn-bg:    #ffffff;
+            --popover-btn-border:rgba(0, 0, 0, 0.12);
+
+            /* Form */
+            --form-bg:           #ffffff;
+            --form-border:       rgba(0, 0, 0, 0.08);
+
+            /* Radio unselected chip */
+            --radio-chip-bg:     #f2f2f7;
+
+            /* Status — Apple system green/amber/red */
+            --status-ok:         #34c759;
+            --status-ok-bg:      rgba(52, 199, 89, 0.12);
+            --status-warn:       #ff9500;
+            --status-warn-bg:    rgba(255, 149, 0, 0.12);
+            --status-bad:        #ff3b30;
+            --status-bad-bg:     rgba(255, 59, 48, 0.12);
+
+            /* Home status row */
+            --status-row-bg:     #f2f2f7;
+            --status-row-border: rgba(0, 0, 0, 0.04);
+
+            /* Profile card */
+            --profile-bg:        #ffffff;
+            --profile-border:    rgba(0, 0, 0, 0.08);
+
+            /* Demo intro box */
+            --demo-box-bg:       #f2f2f7;
+            --demo-box-border:   rgba(0, 0, 0, 0.05);
+
+            /* Aircraft placeholder */
+            --aircraft-ph-bg:    rgba(0, 122, 255, 0.06);
+            --aircraft-ph-border:rgba(0, 122, 255, 0.12);
+            --aircraft-ph-color: #007aff;
+
+            /* Metric widget */
+            --metric-border:     rgba(0, 0, 0, 0.06);
+        }
+
+        /* ============================================================
+           DARK MODE — Apple HIG dark palette
+        ============================================================ */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --sys-bg-primary:    #000000;
+                --sys-bg-secondary:  #1c1c1e;
+                --sys-bg-tertiary:   #2c2c2e;
+                --sys-bg-grouped:    #000000;
+                --sys-bg-gradient:   linear-gradient(180deg, #122540 0%, #000000 320px);
+
+                --card-bg:           #1c1c1e;
+                --card-bg-alt:       #2c2c2e;
+                --card-gradient:     none;
+                --card-border:       rgba(255, 255, 255, 0.08);
+                --card-shadow:       0 8px 30px rgba(0, 0, 0, 0.5);
+
+                --text-primary:      #ffffff;
+                --text-secondary:    #ebebf599; /* 60% opacity */
+                --text-tertiary:     #ebebf54d; /* 30% opacity */
+                --text-label:        #ebebf599;
+
+                --border-color:      rgba(255, 255, 255, 0.1);
+                --border-light:      rgba(255, 255, 255, 0.05);
+                --border-input:      rgba(255, 255, 255, 0.15);
+                --border-radio:      rgba(255, 255, 255, 0.2);
+
+                --accent:            #0a84ff;
+                --accent-dark:       #0066cc;
+                --accent-bg:         rgba(10, 132, 255, 0.15);
+                --accent-hover-bg:   rgba(10, 132, 255, 0.08);
+                --accent-border:     rgba(10, 132, 255, 0.25);
+
+                --indigo:            #5e5ce6;
+
+                --popover-btn-bg:    #1c1c1e;
+                --popover-btn-border:rgba(255, 255, 255, 0.15);
+
+                --form-bg:           #1c1c1e;
+                --form-border:       rgba(255, 255, 255, 0.08);
+
+                --radio-chip-bg:     #2c2c2e;
+
+                --status-ok:         #30d158;
+                --status-ok-bg:      rgba(48, 209, 88, 0.15);
+                --status-warn:       #ffd60a;
+                --status-warn-bg:    rgba(255, 214, 10, 0.15);
+                --status-bad:        #ff453a;
+                --status-bad-bg:     rgba(255, 69, 58, 0.15);
+
+                --status-row-bg:     #2c2c2e;
+                --status-row-border: rgba(255, 255, 255, 0.05);
+
+                --profile-bg:        #1c1c1e;
+                --profile-border:    rgba(255, 255, 255, 0.08);
+
+                --demo-box-bg:       #2c2c2e;
+                --demo-box-border:   rgba(255, 255, 255, 0.08);
+
+                --aircraft-ph-bg:    rgba(10, 132, 255, 0.1);
+                --aircraft-ph-border:rgba(10, 132, 255, 0.2);
+                --aircraft-ph-color: #0a84ff;
+
+                --metric-border:     rgba(255, 255, 255, 0.08);
+            }
+        }
+
+        /* ============================================================
+           GLOBAL RESET & TYPOGRAPHY
+        ============================================================ */
+        html, body, [data-testid="stAppViewContainer"], .stApp, select, input, button, textarea, p, h1, h2, h3, h4, h5, h6, label {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Arial, sans-serif !important;
+        }
+
+        /* Explicitly preserve Streamlit's Material Icon fonts */
+        [data-testid="stIcon"], .notranslate, [class*="MaterialSymbols"] {
+            font-family: "Material Symbols Outlined", "Material Symbols Rounded", "Material Icons" !important;
+        }
+
+        [data-testid="stAppViewContainer"], .stApp {
+            background: var(--sys-bg-gradient) !important;
+            background-color: var(--sys-bg-primary) !important;
+            background-attachment: fixed !important;
+        }
+
+        [data-testid="stHeader"] {
+            background-color: transparent !important;
+        }
+
+        .block-container {
+            padding-top: 1.5rem !important;
+            padding-bottom: 7.5rem !important;
+            max-width: 1080px !important;
+        }
+
+        /* Streamlit global column margin alignment */
+        div[data-testid="column"] {
+            gap: 1rem !important;
+        }
+
+        /* Override st.markdown and default texts */
+        h1, h2, h3, h4, h5, h6, p, span, label {
+            color: var(--text-primary);
+        }
+
+        h1 {
+            font-size: 2.2rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.03em !important;
+        }
+
+        h2 {
+            font-size: 1.6rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.02em !important;
+            margin-top: 1.5rem !important;
+            margin-bottom: 0.8rem !important;
+        }
+
+        h3 {
+            font-size: 1.25rem !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.01em !important;
+            margin-top: 1.2rem !important;
+            margin-bottom: 0.6rem !important;
+        }
+
+        /* ============================================================
+           NATIVE STREAMLIT COMPONENT OVERRIDES
+        ============================================================ */
+        /* Standard buttons */
+        .stButton > button {
+            border-radius: 12px !important;
+            font-weight: 600 !important;
+            font-size: 0.92rem !important;
+            min-height: 2.6rem !important;
+            padding: 0.5rem 1.2rem !important;
+            transition: all 0.15s ease !important;
+            border: 1px solid var(--border-input) !important;
+            background-color: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+        }
+        .stButton > button:hover {
+            border-color: var(--accent) !important;
+            background-color: var(--accent-hover-bg) !important;
+            color: var(--accent) !important;
+        }
+        .stButton > button:active {
+            transform: scale(0.98);
+        }
+
+        /* Primary button override */
+        .stButton > button[data-testid="baseButton-primary"] {
+            background-color: var(--accent) !important;
+            border-color: var(--accent) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(10, 122, 255, 0.2) !important;
+        }
+        .stButton > button[data-testid="baseButton-primary"]:hover {
+            background-color: var(--accent-dark) !important;
+            border-color: var(--accent-dark) !important;
+            color: #ffffff !important;
+        }
+
+        /* Forms */
+        div[data-testid="stForm"] {
+            border: 1px solid var(--card-border) !important;
+            border-radius: 20px !important;
+            padding: 2rem !important;
+            background-color: var(--card-bg) !important;
+            box-shadow: var(--card-shadow) !important;
+        }
+
+        /* Input Controls */
+        div[data-baseweb="input"] {
+            border: 1px solid var(--border-input) !important;
+            border-radius: 12px !important;
+            background-color: var(--sys-bg-secondary) !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-baseweb="input"]:focus-within {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 3px var(--accent-bg) !important;
+        }
+        div[data-baseweb="input"] input {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0.5rem 0.8rem !important;
+            color: var(--text-primary) !important;
+            font-size: 0.95rem !important;
+        }
+
+        /* Select boxes */
+        div[data-baseweb="select"] {
+            border-radius: 12px !important;
+            border: 1px solid var(--border-input) !important;
+            background-color: var(--sys-bg-secondary) !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-baseweb="select"]:focus-within {
+            border-color: var(--accent) !important;
+        }
+        div[data-baseweb="select"] > div {
+            background-color: transparent !important;
+            border: none !important;
+        }
+
+        /* Segmented control track */
+        div[data-testid="stSegmentedControl"] {
+            background-color: var(--sys-bg-tertiary) !important;
+            border-radius: 12px !important;
+            padding: 2px !important;
+            gap: 2px !important;
+            display: inline-flex !important;
+            border: none !important;
+            margin: 1rem auto 1.5rem auto !important;
+        }
+        /* Segmented control individual options */
+        div[data-testid="stSegmentedControl"] button {
+            border-radius: 10px !important;
+            border: none !important;
+            background-color: transparent !important;
+            color: var(--text-secondary) !important;
+            font-weight: 550 !important;
+            font-size: 0.9rem !important;
+            padding: 0.4rem 1.1rem !important;
+            min-height: 2.2rem !important;
+            box-shadow: none !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        div[data-testid="stSegmentedControl"] button:hover {
+            color: var(--text-primary) !important;
+            background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+        /* Active selected segment */
+        div[data-testid="stSegmentedControl"] button[data-testid="baseButton-primary"] {
+            background-color: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+            font-weight: 600 !important;
+        }
+
+        /* Metrics */
+        div[data-testid="stMetric"] {
+            background-color: var(--card-bg) !important;
+            border: 1px solid var(--card-border) !important;
+            border-radius: 16px !important;
+            padding: 1rem !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+        }
+        div[data-testid="stMetric"] label {
+            font-size: 0.82rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            color: var(--text-secondary) !important;
+        }
+        div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+            font-size: 1.8rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.02em !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* ============================================================
+           STATUS LABELS (inline text)
+        ============================================================ */
+        .status-ok  {color: var(--status-ok);  font-weight: 600;}
+        .status-warn{color: var(--status-warn); font-weight: 600;}
+        .status-bad {color: var(--status-bad);  font-weight: 600;}
+
+        /* Status badges used in cards */
+        .badge-ok   {background: var(--status-ok-bg);   color: var(--status-ok);  border-radius:999px; padding:.25rem .65rem; font-weight:600; font-size:.78rem; white-space:nowrap;}
+        .badge-warn {background: var(--status-warn-bg); color: var(--status-warn); border-radius:999px; padding:.25rem .65rem; font-weight:600; font-size:.78rem; white-space:nowrap;}
+        .badge-bad  {background: var(--status-bad-bg);  color: var(--status-bad); border-radius:999px; padding:.25rem .65rem; font-weight:600; font-size:.78rem; white-space:nowrap;}
+        .badge-ok-text  {color: var(--status-ok);  font-size:1.15rem; font-weight:700;}
+        .badge-bad-text {color: var(--status-bad); font-size:1.15rem; font-weight:700;}
+
+        /* ============================================================
+           PAGE LABEL
+        ============================================================ */
+        .page-label {
+            color: var(--text-label);
+            font-size: .95rem;
+            margin: -.5rem 0 1.25rem 0;
+            font-weight: 500;
+        }
+
+        /* ============================================================
+           POPOVER / MENU BUTTON
+        ============================================================ */
+        div[data-testid="stPopover"] {
+            margin-top: 0.5rem !important;
+            position: relative !important;
+        }
+        @media (max-width: 760px) {
+            div[data-testid="stPopover"] {
+                margin-top: 1rem !important;
+            }
+        }
+        
+        /* ============================================================
+           iOS TOP NAVIGATION BAR
+        ============================================================ */
+        .top-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 0.8rem;
+        }
+        .status-pill-ok {
+            background-color: var(--status-ok-bg) !important;
+            color: var(--status-ok) !important;
+            border: 1px solid rgba(52, 199, 89, 0.2);
+        }
+        .status-pill-ok .pill-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--status-ok);
+        }
+        .status-pill-bad {
+            background-color: var(--status-bad-bg) !important;
+            color: var(--status-bad) !important;
+            border: 1px solid rgba(255, 59, 48, 0.2);
+        }
+        .status-pill-bad .pill-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--status-bad);
+            animation: pulse-red 2s infinite;
+        }
+        .status-pill-warn {
+            background-color: var(--status-warn-bg) !important;
+            color: var(--status-warn) !important;
+            border: 1px solid rgba(255, 149, 0, 0.2);
+        }
+        .status-pill-warn .pill-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--status-warn);
+            animation: pulse-orange 2s infinite;
+        }
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+        }
+        @keyframes pulse-orange {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(255, 149, 0, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 149, 0, 0); }
+        }
+
+        
+        .top-page-title {
+            text-align: center;
+            font-size: 1.6rem !important;
+            font-weight: 700 !important;
+            color: var(--text-primary) !important;
+            margin: 0.6rem 0 0 0 !important;
+            letter-spacing: -0.02em;
+        }
+        @media (max-width: 768px) {
+            div[data-testid="stPopoverBody"] {
+                position: absolute !important;
+                top: calc(100% + 6px) !important;
+                right: 0 !important;
+                left: auto !important;
+                bottom: auto !important;
+                width: 280px !important;
+                max-width: calc(100vw - 2rem) !important;
+                height: auto !important;
+                min-height: auto !important;
+                max-height: 80vh !important;
+                box-shadow: 0 12px 36px rgba(0,0,0,0.15) !important;
+                border-radius: 16px !important;
+                border: 1px solid var(--card-border) !important;
+                background-color: var(--card-bg) !important;
+                transform: none !important;
+                z-index: 999999 !important;
+                overflow-y: auto !important;
+                padding: 1rem !important;
+            }
+        }
+        div[data-testid="stPopover"] > button {
+            border-radius: 50% !important;
+            width: 2.8rem !important;
+            height: 2.8rem !important;
+            min-height: 2.8rem !important;
+            max-width: 2.8rem !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 1.3rem !important;
+            margin-left: auto !important; /* Float right */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-testid="stPopover"] > button:hover {
+            border-color: var(--accent) !important;
+            background-color: var(--accent-hover-bg) !important;
+            color: var(--accent) !important;
+            box-shadow: 0 6px 16px rgba(0, 122, 255, 0.1) !important;
+        }
+
+        /* ============================================================
+           MENU NAVIGATION LIST (Grouped List Style)
+        ============================================================ */
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] {
+            padding: 0.25rem 0 !important;
+            gap: 2px !important;
+        }
+        
+        div[data-testid="stPopover"] .stCaption {
+            font-size: 0.78rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            color: var(--text-secondary) !important;
+            margin-top: 0.8rem !important;
+            margin-bottom: 0.3rem !important;
+            padding-left: 0.8rem !important;
+        }
+
+        /* Navigation buttons inside popover list */
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button {
+            width: 100% !important;
+            border: none !important;
+            border-radius: 8px !important;
+            background: transparent !important;
+            color: var(--text-primary) !important;
+            padding: 0.6rem 0.8rem !important;
+            min-height: 2.4rem !important;
+            font-weight: 500 !important;
+            box-shadow: none !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+            transition: background-color 0.15s ease, color 0.15s ease !important;
+        }
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button:hover {
+            background-color: var(--sys-bg-tertiary) !important;
+            color: var(--accent) !important;
+        }
+        /* Active button in the popover list */
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button[data-testid="baseButton-primary"] {
+            background-color: var(--accent-bg) !important;
+            color: var(--accent) !important;
+            font-weight: 600 !important;
+        }
+        /* Logout button style in popover */
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] > div[data-testid="stButton"]:last-child button {
+            border-top: 1px solid var(--border-light) !important;
+            border-radius: 0 !important;
+            margin-top: 0.5rem !important;
+            padding-top: 0.8rem !important;
+            color: var(--status-bad) !important;
+        }
+        div[data-testid="stPopover"] div[data-testid="stVerticalBlock"] > div[data-testid="stButton"]:last-child button:hover {
+            background-color: var(--status-bad-bg) !important;
+            color: var(--status-bad) !important;
+        }
+
+        /* Language flags selector */
+        div[data-testid="stPopover"] div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
+            font-size: 1.2rem !important;
+            min-height: 2.2rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 8px !important;
+            border: 1px solid var(--border-light) !important;
+            background-color: var(--sys-bg-primary) !important;
+        }
+        div[data-testid="stPopover"] div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button[data-testid="baseButton-primary"] {
+            border-color: var(--accent) !important;
+            background-color: var(--accent-bg) !important;
+        }
+
+        /* ============================================================
+           RADIO GROUPS
+        ============================================================ */
+        div[role="radiogroup"] {
+            gap: 0.5rem !important;
+            padding: 4px 0 !important;
+        }
+        div[role="radiogroup"] label {
+            border: 1px solid var(--border-input) !important;
+            border-radius: 10px !important;
+            padding: 0.45rem 0.85rem !important;
+            margin: 0 !important;
+            background: var(--card-bg) !important;
+            color: var(--text-secondary) !important;
+            font-weight: 550 !important;
+            font-size: 0.9rem !important;
+            transition: all 0.15s ease !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+        }
+        div[role="radiogroup"] label:hover {
+            border-color: var(--accent) !important;
+            color: var(--text-primary) !important;
+        }
+        div[role="radiogroup"] label:has(input:checked) {
+            border-color: var(--accent) !important;
+            background-color: var(--accent-bg) !important;
+            color: var(--accent) !important;
+            font-weight: 600 !important;
+            box-shadow: 0 0 0 1px var(--accent) !important;
+        }
+
+        /* ============================================================
+           PYDECK ROUTE MAP INSERT (Apple Grouped Card Style)
+        ============================================================ */
+        div[data-testid="stPydeckChart"] {
+            border-radius: 20px !important;
+            overflow: hidden !important;
+            border: 1px solid var(--card-border) !important;
+            box-shadow: var(--card-shadow) !important;
+            margin: 1.2rem 0 !important;
+        }
+
+        /* ============================================================
+           FLIGHT LIST / ROWS (iOS Grouped Style)
+        ============================================================ */
+        .flight-list {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            overflow: hidden;
+            margin-top: 1.2rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+        }
+        .flight-row-link {
+            text-decoration: none !important;
+            color: inherit !important;
+            display: block !important;
+            transition: background-color 0.15s ease;
+        }
+        .flight-row-link:hover {
+            background-color: var(--sys-bg-tertiary) !important;
+        }
+        .flight-row-link:last-child .flight-row {
+            border-bottom: 0 !important;
+        }
+        .flight-row {
+            display: grid;
+            grid-template-columns: 60px 1.2fr 80px 1.2fr 40px;
+            gap: 1rem;
+            align-items: center;
+            padding: 1.2rem 1.4rem;
+            border-bottom: 1px solid var(--border-light);
+            background: transparent;
+        }
+        
+        .flight-date {
+            text-align: center;
+            line-height: 1.1;
+            background: var(--sys-bg-primary);
+            border-radius: 12px;
+            padding: 0.5rem;
+            border: 1px solid var(--border-light);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .flight-day {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+        .flight-month {
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .flight-aircraft-thumb {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 1px solid var(--border-light);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        }
+        .flight-airport {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+        .flight-time {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .flight-duration {
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .flight-chevron {
+            text-align: right;
+            color: var(--text-tertiary);
+            font-size: 1.3rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 0.5rem;
+        }
+        .flight-chip-row {
+            display: flex;
+            gap: 0.35rem;
+            margin-top: 0.4rem;
+            flex-wrap: wrap;
+        }
+        .flight-chip {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 6px;
+            padding: 0.15rem 0.4rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            background: var(--sys-bg-primary);
+        }
+        .flight-chip-primary {
+            background: var(--accent-bg);
+            border-color: var(--accent-border);
+            color: var(--accent);
+        }
+        .flight-landings {
+            text-align: right;
+        }
+        .landing-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--sys-bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        /* ============================================================
+           HOME STAT CARDS
+        ============================================================ */
+        .mockup-stats-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 1.5rem 0 2rem;
+            padding: 0 1rem;
+        }
+        .mockup-stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            flex: 1;
+            text-decoration: none !important;
+            color: inherit !important;
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        .mockup-stat-item:hover {
+            transform: translateY(-2px);
+            opacity: 0.85;
+        }
+        .mockup-stat-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.6rem;
+            height: 2.6rem;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+        }
+        .red-bg-icon {
+            color: #ff3b30;
+            background: rgba(255, 59, 48, 0.08);
+            transform: rotate(-15deg);
+        }
+        .blue-bg-icon {
+            color: #007aff;
+            background: rgba(0, 122, 255, 0.08);
+        }
+        .orange-bg-icon {
+            color: #ff9500;
+            background: rgba(255, 149, 0, 0.08);
+        }
+        .mockup-stat-value {
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+        .mockup-stat-label {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            text-transform: capitalize;
+        }
+        .mockup-stat-chevron {
+            color: var(--text-tertiary);
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* ============================================================
+           MOCKUP STATUS CARD
+        ============================================================ */
+        .mockup-status-card {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--card-border) !important;
+            border-radius: 16px !important;
+            padding: 0.9rem 1.2rem !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+            margin: 1rem 0 1.5rem 0 !important;
+            transition: all 0.2s ease !important;
+            text-decoration: none !important;
+        }
+        .mockup-status-card:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.04) !important;
+            background-color: var(--sys-bg-tertiary) !important;
+        }
+        .status-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.8rem !important;
+        }
+        .status-pulse-icon {
+            font-size: 1.2rem !important;
+            color: #007aff !important;
+            background: rgba(0, 122, 255, 0.08) !important;
+            width: 2.2rem !important;
+            height: 2.2rem !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .status-title {
+            font-weight: 700 !important;
+            font-size: 1.15rem !important;
+            color: var(--text-primary) !important;
+            letter-spacing: -0.01em !important;
+        }
+        .status-right {
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.4rem !important;
+            font-weight: 600 !important;
+            font-size: 1rem !important;
+        }
+        .status-right-current {
+            color: var(--status-ok) !important;
+        }
+        .status-right-bad {
+            color: var(--status-bad) !important;
+        }
+        .status-check-circle {
+            background-color: var(--status-ok) !important;
+            color: #ffffff !important;
+            width: 1.2rem !important;
+            height: 1.2rem !important;
+            border-radius: 50% !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 0.75rem !important;
+            font-weight: bold !important;
+        }
+        .status-warn-circle {
+            background-color: var(--status-bad) !important;
+            color: #ffffff !important;
+            width: 1.2rem !important;
+            height: 1.2rem !important;
+            border-radius: 50% !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 0.75rem !important;
+            font-weight: bold !important;
+        }
+        .home-status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.8rem;
+        }
+        .home-status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 1rem;
+            background: var(--sys-bg-primary);
+            min-height: 4.8rem;
+        }
+        .home-status-label {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+        .home-status-detail {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            font-weight: 500;
+            margin-top: 0.12rem;
+        }
+
+        /* ============================================================
+           INFO / DEADLINE CARDS
+        ============================================================ */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .info-card {
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            padding: 1.2rem;
+            background: var(--card-bg);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        }
+        .info-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .info-sub {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
+        .info-pill {
+            display: inline-flex;
+            border-radius: 8px;
+            padding: 0.2rem 0.55rem;
+            margin-top: 0.6rem;
+            background: var(--accent-bg);
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.78rem;
+        }
+
+        /* ============================================================
+           AIRCRAFT CARDS
+        ============================================================ */
+        .aircraft-card {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 1.1rem;
+            align-items: center;
+        }
+        .aircraft-photo {
+            width: 100px;
+            height: 75px;
+            border-radius: 14px;
+            object-fit: cover;
+            background: var(--sys-bg-primary);
+            border: 1px solid var(--border-light);
+        }
+        .aircraft-photo-placeholder {
+            width: 100px;
+            height: 75px;
+            border-radius: 14px;
+            background: var(--aircraft-ph-bg);
+            border: 1px solid var(--aircraft-ph-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--aircraft-ph-color);
+            font-weight: 700;
+            font-size: 1.8rem;
+        }
+
+        /* ============================================================
+           LOGIN HERO
+        ============================================================ */
+        .login-hero {
+            text-align: center;
+            margin-top: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .login-hero-title {
+            margin-top: 0.6rem;
+            margin-bottom: 0.2rem;
+            font-size: 2.5rem !important;
+            font-weight: 800 !important;
+            letter-spacing: -0.04em !important;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--indigo) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .login-hero-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.15rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+        }
+
+        /* ============================================================
+           DEMO INTRO BOX
+        ============================================================ */
+        .demo-intro-box {
+            background: var(--demo-box-bg);
+            border: 1px solid var(--demo-box-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.01);
+        }
+        .demo-intro-text {
+            margin: 0;
+            color: var(--text-secondary);
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+           ACCOUNT PROFILE CARD
+        ============================================================ */
+        .profile-card {
+            background: var(--profile-bg);
+            border: 1px solid var(--profile-border);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.02);
+        }
+        .profile-card-inner {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--indigo) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 700;
+            box-shadow: 0 8px 16px rgba(10, 132, 255, 0.15);
+        }
+        .profile-username {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .profile-email {
+            margin: 0.1rem 0 0 0;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+        ============================================================ */
+        @media (max-width: 760px) {
+            .block-container {padding-left: .8rem !important; padding-right: .8rem !important;}
+            div[data-testid="column"] {width: 100% !important; flex: 1 1 100% !important;}
+            .flight-row {
+                grid-template-columns: 50px 1.2fr 60px 1.2fr 24px !important;
+                padding: 0.8rem 0.6rem !important;
+                gap: 0.5rem !important;
+            }
+            .flight-airport {
+                font-size: 1.05rem !important;
+            }
+            .flight-time {
+                font-size: 0.78rem !important;
+            }
+            .flight-duration {
+                font-size: 0.78rem !important;
+            }
+            .flight-chevron {
+                font-size: 0.95rem !important;
+            }
+            .home-stats {grid-template-columns: repeat(2, minmax(0, 1fr));}
+        }
+
+        /* Prevent stacking of navigation bar columns on mobile */
+        div[data-testid="stHorizontalBlock"]:has(.top-status-pill) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.top-status-pill) > div[data-testid="column"] {
+            width: auto !important;
+            flex: unset !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.top-status-pill) > div[data-testid="column"]:nth-child(1) {
+            width: 25% !important;
+            flex-grow: 0 !important;
+            flex-shrink: 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.top-status-pill) > div[data-testid="column"]:nth-child(2) {
+            width: 50% !important;
+            flex-grow: 1 !important;
+            flex-shrink: 1 !important;
+            text-align: center !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.top-status-pill) > div[data-testid="column"]:nth-child(3) {
+            width: 25% !important;
+            flex-grow: 0 !important;
+            flex-shrink: 0 !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+        }
+
+        /* Prevent stacking of 5-column language flags on login page */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(5)) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(5)) > div[data-testid="column"] {
+            width: 20% !important;
+            flex: 1 1 20% !important;
+        }
+
+        /* Prevent stacking of 3-column language flags inside popover menu */
+        div[data-testid="stPopoverBody"] div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3)) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
+        }
+        div[data-testid="stPopoverBody"] div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3)) > div[data-testid="column"] {
+            width: 33.33% !important;
+            flex: 1 1 33.33% !important;
+        }
+
+        /* Responsive size adjustments for extremely narrow screen viewports (e.g. mobile phones in vertical mode) */
+        @media (max-width: 480px) {
+            .top-status-pill {
+                padding: 4px 8px !important;
+                font-size: 0.72rem !important;
+            }
+            .top-page-title {
+                font-size: 1.2rem !important;
+            }
+            div[data-testid="stPopover"] > button {
+                width: 2.2rem !important;
+                height: 2.2rem !important;
+                min-height: 2.2rem !important;
+                font-size: 1.05rem !important;
+            }
+            /* Adjust flight row grid for very small screens */
+            .flight-row {
+                grid-template-columns: 44px 1fr 50px 1fr 16px !important;
+                padding: 0.6rem 0.4rem !important;
+                gap: 0.35rem !important;
+            }
+            .flight-airport {
+                font-size: 0.95rem !important;
+            }
+            .flight-time {
+                font-size: 0.72rem !important;
+            }
+            .flight-duration {
+                font-size: 0.72rem !important;
+            }
+            .flight-chip {
+                font-size: 0.65rem !important;
+                padding: 0.1rem 0.3rem !important;
+            }
+            .flight-aircraft-thumb {
+                width: 40px !important;
+                height: 40px !important;
+            }
+        }
+
+        /* ============================================================
+           FLOATING BOTTOM NAVIGATION BAR
+        ============================================================ */
+        .bottom-nav-container {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 2rem);
+            max-width: 480px;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            pointer-events: auto;
+        }
+
+        .bottom-nav-bar {
+            flex: 1;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(20px) saturate(190%);
+            -webkit-backdrop-filter: blur(20px) saturate(190%);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 999px;
+            padding: 0.4rem 0.8rem;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .bottom-nav-bar {
+                background: rgba(28, 28, 30, 0.72) !important;
+                border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4) !important;
+            }
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none !important;
+            color: var(--text-secondary) !important;
+            font-size: 0.65rem;
+            font-weight: 600;
+            transition: all 0.15s ease;
+            padding: 0.2rem 0.4rem;
+        }
+
+        .bottom-nav-item:hover {
+            color: var(--accent) !important;
+        }
+
+        .bottom-nav-item.active {
+            color: var(--accent) !important;
+        }
+
+        .bottom-nav-icon {
+            font-size: 1.3rem;
+            margin-bottom: 0.1rem;
+        }
+
+        .bottom-nav-plus-btn {
+            width: 2.8rem;
+            height: 2.8rem;
+            border-radius: 50%;
+            background-color: var(--accent);
+            color: #ffffff !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 300;
+            text-decoration: none !important;
+            box-shadow: 0 6px 16px rgba(0, 122, 255, 0.35);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .bottom-nav-plus-btn:hover {
+            background-color: var(--accent-dark);
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 122, 255, 0.45);
+        }
+
+        .bottom-nav-plus-btn:active {
+            transform: scale(0.95);
+        }

@@ -12,6 +12,8 @@ DATA_FILE = APP_DIR / "logbook_data.json"
 AIRPORTS_FILE = APP_DIR / "airports_fr_ch.json"
 AIRCRAFT_IMAGE_DIR = APP_DIR / "aircraft_images"
 
+ACTIVE_SESSIONS: dict[str, str] = {}
+
 
 def default_aircraft_image_path(registration: str) -> str:
     image_path = AIRCRAFT_IMAGE_DIR / f"{registration}.jpg"
@@ -549,3 +551,32 @@ def delete_aircraft_image(profile: dict) -> None:
     path = Path(image_path)
     if path.exists() and path.is_file() and AIRCRAFT_IMAGE_DIR in path.parents:
         path.unlink()
+
+
+def save_new_aircraft_if_needed(data: dict, registration: str, profile: dict, image) -> None:
+    if registration in data["aircraft_profiles"]:
+        return
+    profile["image_path"] = save_aircraft_image(registration, image)
+    data["aircraft_profiles"][registration] = profile
+
+
+def get_current_user_id() -> str | None:
+    """Return the active local account id for this session, if set."""
+    import streamlit as st
+    return st.session_state.get("current_user_id")
+
+
+def current_account_label(all_data: dict, user_id: str) -> str:
+    account = all_data.get("accounts", {}).get(user_id, {})
+    username = account.get("username") or user_id
+    email = account.get("email") or user_id
+    return f"{username} · {email}" if username != email else username
+
+
+def set_active_account(user_id: str) -> None:
+    import streamlit as st
+    st.session_state.current_user_id = user_id
+    st.query_params["account"] = user_id
+
+
+
